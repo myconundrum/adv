@@ -1,0 +1,109 @@
+{
+  "templates": [
+    {
+      "name": "player",
+      "components": [
+        {
+          "type": "Position",
+          "x": 5.0,
+          "y": 5.0
+        },
+        {
+          "type": "BaseInfo",
+          "symbol": "@",
+          "color": 2,
+          "name": "Player",
+          "is_carryable": 0
+        },
+        {
+          "type": "Actor",
+          "is_player": 1,
+          "can_carry": 1,
+          "energy": 100,
+          "energy_per_turn": 10,
+          "hp": 100,
+          "strength": 10,
+          "attack": 5,
+          "attack_bonus": 0,
+          "defense": 5,
+          "defense_bonus": 0,
+          "damage_dice": 1,
+          "damage_sides": 6,
+          "damage_bonus": 0
+        },
+        {
+          "type": "Action",
+          "action_type": 0,
+          "action_data": 0
+        }
+      ]
+    },
+    {
+      "name": "enemy",
+      "components": [
+        {
+          "type": "Position",
+          "x": 10.0,
+          "y": 10.0
+        },
+        {
+          "type": "BaseInfo",
+          "symbol": "o",
+          "color": 1,
+          "name": "Orc",
+          "is_carryable": 0
+        },
+        {
+          "type": "Actor",
+          "is_player": 0,
+          "can_carry": 1,
+          "energy": 80,
+          "energy_per_turn": 8,
+          "hp": 60,
+          "strength": 12,
+          "attack": 6,
+          "attack_bonus": 1,
+          "defense": 4,
+          "defense_bonus": 0,
+          "damage_dice": 1,
+          "damage_sides": 8,
+          "damage_bonus": 2
+        }
+      ]
+    },
+    {
+      "name": "gold",
+      "components": [
+        {
+          "type": "Position",
+          "x": 15.0,
+          "y": 15.0
+        },
+        {
+          "type": "BaseInfo",
+          "symbol": "$",
+          "color": 3,
+          "name": "Gold",
+          "is_carryable": 1
+        }
+      ]
+    },
+    {
+      "name": "sword",
+      "components": [
+        {
+          "type": "Position",
+          "x": 20.0,
+          "y": 20.0
+        },
+        {
+          "type": "BaseInfo",
+          "symbol": "|",
+          "color": 7,
+          "name": "Sword",
+          "is_carryable": 1
+        }
+      ]
+    }
+  ]
+} 
