@@ -152,4 +152,4 @@ adv/
 
 ## License
 
-This project is open source. Feel free to modify and extend it for your own projects. 
+This project is open source. Feel free to modify and extend it for your own projects.
