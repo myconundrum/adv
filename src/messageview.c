@@ -305,6 +305,21 @@ void messageview_render(SDL_Renderer *main_renderer, World *world) {
     SDL_RenderPresent(g_message_view.renderer);
 }
 
+// Helper function to check if mouse is over our window
+static bool messageview_mouse_in_window(void) {
+    if (!g_message_view.window) return false;
+    
+    int mouse_x, mouse_y;
+    SDL_GetGlobalMouseState(&mouse_x, &mouse_y);
+    
+    int window_x, window_y, window_w, window_h;
+    SDL_GetWindowPosition(g_message_view.window, &window_x, &window_y);
+    SDL_GetWindowSize(g_message_view.window, &window_w, &window_h);
+    
+    return (mouse_x >= window_x && mouse_x < window_x + window_w &&
+            mouse_y >= window_y && mouse_y < window_y + window_h);
+}
+
 bool messageview_point_in_scrollbar(int x, int y) {
     if (!g_message_view.window) return false;
     
@@ -359,8 +374,8 @@ bool messageview_handle_event(SDL_Event *event) {
         }
     }
     
-    // Handle mouse events if window has focus or we're dragging
-    if ((g_message_view.has_focus || g_message_view.scrollbar_dragging) && 
+    // Handle mouse events if window has focus, we're dragging, or mouse is over window
+    if ((g_message_view.has_focus || g_message_view.scrollbar_dragging || messageview_mouse_in_window()) && 
         (event->type == SDL_MOUSEBUTTONDOWN || event->type == SDL_MOUSEBUTTONUP || 
          event->type == SDL_MOUSEMOTION || event->type == SDL_MOUSEWHEEL)) {
         
@@ -375,14 +390,9 @@ bool messageview_handle_event(SDL_Event *event) {
         }
         
         if (event->type == SDL_MOUSEBUTTONDOWN && event->button.button == SDL_BUTTON_LEFT) {
-            int mouse_x, mouse_y;
-            SDL_GetMouseState(&mouse_x, &mouse_y);
-            
-            // Convert to window-relative coordinates
-            int window_x, window_y;
-            SDL_GetWindowPosition(g_message_view.window, &window_x, &window_y);
-            mouse_x -= window_x;
-            mouse_y -= window_y;
+            // Use event coordinates directly - these are already window-relative
+            int mouse_x = event->button.x;
+            int mouse_y = event->button.y;
             
             if (messageview_point_in_scrollbar(mouse_x, mouse_y)) {
                 g_message_view.scrollbar_dragging = true;
@@ -398,13 +408,8 @@ bool messageview_handle_event(SDL_Event *event) {
         }
         
         if (event->type == SDL_MOUSEMOTION && g_message_view.scrollbar_dragging) {
-            int mouse_x, mouse_y;
-            SDL_GetMouseState(&mouse_x, &mouse_y);
-            
-            // Convert to window-relative coordinates
-            int window_x, window_y;
-            SDL_GetWindowPosition(g_message_view.window, &window_x, &window_y);
-            mouse_y -= window_y;
+            // Use event coordinates directly - these are already window-relative
+            int mouse_y = event->motion.y;
             
             g_message_view.scroll_position = messageview_scrollbar_position_to_line(mouse_y);
             return true;

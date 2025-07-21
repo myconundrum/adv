@@ -219,6 +219,9 @@ int main(int argc, char* argv[]) {
     messages_add("The message window can be resized and moved. Use the scrollbar or arrow keys when focused to scroll through messages.");
     messages_add("Each new message appears on a separate line and will wrap to fit the window width when resized.");
     
+    // Show message window by default
+    messageview_show();
+    
     // Main loop
     while (true) {
         // Run ECS systems (this will handle input, actions, rendering, and frame presentation)
