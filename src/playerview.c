@@ -76,8 +76,6 @@ void playerview_render(SDL_Renderer *renderer, World *world) {
     // Get player components
     BaseInfo *player_info = (BaseInfo *)entity_get_component(world->player, component_get_id("BaseInfo"));
     Actor *player_actor = (Actor *)entity_get_component(world->player, component_get_id("Actor"));
-    Position *player_pos = (Position *)entity_get_component(world->player, component_get_id("Position"));
-    Inventory *player_inventory = (Inventory *)entity_get_component(world->player, component_get_id("Inventory"));
     
     SDL_Color white = {255, 255, 255, 255};
     SDL_Color green = {0, 255, 0, 255};
@@ -90,7 +88,7 @@ void playerview_render(SDL_Renderer *renderer, World *world) {
     
     // Player name and symbol
     if (player_info) {
-        char name_line[64];
+        char name_line[32];
         snprintf(name_line, sizeof(name_line), "%c %s", player_info->character, player_info->name);
         render_text_at_position(renderer, name_line, x_offset, y_offset, white);
         y_offset += line_height * 2;
@@ -98,7 +96,7 @@ void playerview_render(SDL_Renderer *renderer, World *world) {
     
     // Player stats
     if (player_actor) {
-        char stats_line[64];
+        char stats_line[32];
         
         // HP
         SDL_Color hp_color = player_actor->hp > 70 ? green : (player_actor->hp > 30 ? yellow : red);
@@ -117,41 +115,11 @@ void playerview_render(SDL_Renderer *renderer, World *world) {
         y_offset += line_height;
         
         // Attack/Defense
-        snprintf(stats_line, sizeof(stats_line), "Att: %d (+%d)", player_actor->attack, player_actor->attack_bonus);
+        snprintf(stats_line, sizeof(stats_line), "Att: %d", player_actor->attack);
         render_text_at_position(renderer, stats_line, x_offset, y_offset, white);
         y_offset += line_height;
         
-        snprintf(stats_line, sizeof(stats_line), "Def: %d (+%d)", player_actor->defense, player_actor->defense_bonus);
+        snprintf(stats_line, sizeof(stats_line), "Def: %d", player_actor->defense);
         render_text_at_position(renderer, stats_line, x_offset, y_offset, white);
-        y_offset += line_height * 2;
-    }
-    
-    // Position
-    if (player_pos) {
-        char pos_line[64];
-        snprintf(pos_line, sizeof(pos_line), "Pos: (%d,%d)", player_pos->x, player_pos->y);
-        render_text_at_position(renderer, pos_line, x_offset, y_offset, white);
-        y_offset += line_height * 2;
-    }
-    
-    // Inventory
-    if (player_inventory) {
-        char inv_header[64];
-        snprintf(inv_header, sizeof(inv_header), "Inventory (%d/%d):", 
-                player_inventory->item_count, player_inventory->max_items);
-        render_text_at_position(renderer, inv_header, x_offset, y_offset, white);
-        y_offset += line_height;
-        
-        // Show items in inventory
-        for (int i = 0; i < player_inventory->item_count && i < 10; i++) {
-            Entity item = player_inventory->items[i];
-            BaseInfo *item_info = (BaseInfo *)entity_get_component(item, component_get_id("BaseInfo"));
-            if (item_info) {
-                char item_line[64];
-                snprintf(item_line, sizeof(item_line), "  %c %s", item_info->character, item_info->name);
-                render_text_at_position(renderer, item_line, x_offset, y_offset, yellow);
-                y_offset += line_height;
-            }
-        }
     }
 }

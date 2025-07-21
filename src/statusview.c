@@ -78,15 +78,13 @@ void statusview_render(SDL_Renderer *renderer, World *world) {
     Position *player_pos = (Position *)entity_get_component(world->player, component_get_id("Position"));
     
     SDL_Color white = {255, 255, 255, 255};
-    SDL_Color cyan = {0, 255, 255, 255};
     
     int y_offset = status_y + 4;
     int x_offset = 8;
     
-    // Status line content
+    // Single line status content
     char status_line[256];
     
-    // Line 1: Basic game info
     if (player_pos) {
         snprintf(status_line, sizeof(status_line), 
                 "Dungeon Level: 1  |  Position: (%d, %d)  |  Rooms: %d", 
@@ -96,10 +94,4 @@ void statusview_render(SDL_Renderer *renderer, World *world) {
                 "Dungeon Level: 1  |  Rooms: %d", world->dungeon.room_count);
     }
     render_text_at_position(renderer, status_line, x_offset, y_offset, white);
-    
-    // Line 2: Additional info
-    y_offset += 16;
-    snprintf(status_line, sizeof(status_line), 
-            "Use arrow keys to move  |  ESC to quit  |  Adventure Game v1.0");
-    render_text_at_position(renderer, status_line, x_offset, y_offset, cyan);
 } 
