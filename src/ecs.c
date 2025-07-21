@@ -7,6 +7,82 @@
 #include "world.h"
 #include "components.h"
 
+// Hash table for component name lookups
+#define COMPONENT_HASH_TABLE_SIZE 64
+
+typedef struct ComponentHashEntry {
+    char name[32];
+    uint32_t component_id;
+    struct ComponentHashEntry *next;
+} ComponentHashEntry;
+
+typedef struct {
+    ComponentHashEntry *buckets[COMPONENT_HASH_TABLE_SIZE];
+} ComponentHashTable;
+
+// Simple hash function for component names
+static uint32_t hash_component_name(const char *name) {
+    uint32_t hash = 5381;
+    for (const char *p = name; *p != '\0'; p++) {
+        // Convert to lowercase for case-insensitive hash
+        char c = (char)tolower((unsigned char)*p);
+        hash = ((hash << 5) + hash) + (uint32_t)c;
+    }
+    return hash % COMPONENT_HASH_TABLE_SIZE;
+}
+
+// Initialize hash table
+static void component_hash_table_init(ComponentHashTable *table) {
+    for (int i = 0; i < COMPONENT_HASH_TABLE_SIZE; i++) {
+        table->buckets[i] = NULL;
+    }
+}
+
+// Add entry to hash table
+static void component_hash_table_add(ComponentHashTable *table, const char *name, uint32_t component_id) {
+    uint32_t bucket = hash_component_name(name);
+    
+    ComponentHashEntry *entry = malloc(sizeof(ComponentHashEntry));
+    if (!entry) {
+        LOG_ERROR("Failed to allocate memory for hash table entry");
+        return;
+    }
+    
+    strncpy(entry->name, name, sizeof(entry->name) - 1);
+    entry->name[sizeof(entry->name) - 1] = '\0';
+    entry->component_id = component_id;
+    entry->next = table->buckets[bucket];
+    table->buckets[bucket] = entry;
+}
+
+// Find entry in hash table
+static uint32_t component_hash_table_find(ComponentHashTable *table, const char *name) {
+    uint32_t bucket = hash_component_name(name);
+    
+    ComponentHashEntry *entry = table->buckets[bucket];
+    while (entry != NULL) {
+        if (strcmp_ci(entry->name, name) == 0) {
+            return entry->component_id;
+        }
+        entry = entry->next;
+    }
+    
+    return INVALID_ENTITY;
+}
+
+// Cleanup hash table
+static void component_hash_table_cleanup(ComponentHashTable *table) {
+    for (int i = 0; i < COMPONENT_HASH_TABLE_SIZE; i++) {
+        ComponentHashEntry *entry = table->buckets[i];
+        while (entry != NULL) {
+            ComponentHashEntry *next = entry->next;
+            free(entry);
+            entry = next;
+        }
+        table->buckets[i] = NULL;
+    }
+}
+
 // Case-insensitive string comparison
 int strcmp_ci(const char *s1, const char *s2) {
     while (*s1 && *s2) {
@@ -48,6 +124,9 @@ typedef struct {
     
     uint32_t component_count;
     bool initialized;
+    
+    // Hash table for O(1) component name lookups
+    ComponentHashTable name_lookup;
 
 } ComponentRegistry;
 
@@ -127,6 +206,9 @@ void ecs_init(void) {
     // Initialize system count
     g_ecs_state.systems.system_count = 0;
     
+    // Initialize component hash table
+    component_hash_table_init(&g_ecs_state.components.name_lookup);
+    
     // Register components - all components must be registered during ecs_init
     components_init();
 
@@ -181,6 +263,9 @@ void ecs_shutdown(void) {
             }
         }
     }
+    
+    // Cleanup component hash table
+    component_hash_table_cleanup(&g_ecs_state.components.name_lookup);
     
     LOG_INFO("ECS shutdown complete");
 }
@@ -241,11 +326,10 @@ uint32_t component_register(const char *name, size_t size) {
         return INVALID_ENTITY;
     }
     
-    // Check if component already exists
-    for (unsigned int i = 0; i < g_ecs_state.components.component_count; i++) {
-        if (strcmp_ci(g_ecs_state.components.component_info[i].name, name) == 0) {
-            return g_ecs_state.components.component_info[i].index;
-        }
+    // Check if component already exists using hash table
+    uint32_t existing_id = component_hash_table_find(&g_ecs_state.components.name_lookup, name);
+    if (existing_id != INVALID_ENTITY) {
+        return existing_id;
     }
     
     // Register new component
@@ -256,6 +340,9 @@ uint32_t component_register(const char *name, size_t size) {
     g_ecs_state.components.component_info[index].bit_flag = 1 << index;
     g_ecs_state.components.component_info[index].data_size = size;
     
+    // Add to hash table for fast lookup
+    component_hash_table_add(&g_ecs_state.components.name_lookup, name, index);
+    
     LOG_INFO("Registered component: %s (ID: %d, Size: %zu)", name, index, size);
     
     g_ecs_state.components.component_count++;
@@ -263,12 +350,8 @@ uint32_t component_register(const char *name, size_t size) {
 }
 
 uint32_t component_get_id(const char *name) {
-    for (unsigned int i = 0; i < g_ecs_state.components.component_count; i++) {
-        if (strcmp_ci(g_ecs_state.components.component_info[i].name, name) == 0) {
-            return g_ecs_state.components.component_info[i].index;
-        }
-    }
-    return INVALID_ENTITY;
+    // Use hash table for O(1) lookup instead of O(n) linear search
+    return component_hash_table_find(&g_ecs_state.components.name_lookup, name);
 }
 
 
