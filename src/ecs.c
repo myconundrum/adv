@@ -512,7 +512,7 @@ static void entity_remove_from_active(Entity entity) {
                     g_ecs_state.active_entities.list.tail = prev;
                 }
             }
-            free(current);
+            pool_free(current);
             g_ecs_state.active_entities.list.size--;
             return;
         }

@@ -172,9 +172,6 @@ int main(int argc, char* argv[]) {
     // Initialize the state manager with initial state
     game_state_manager_init(state_manager);
     
-    // Initialize memory pool
-    mempool_init();
-    
     // Timing variables for delta time
     Uint32 last_time = SDL_GetTicks();
     
