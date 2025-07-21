@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include "log.h"
 #include "ecs.h"
+#include "components.h"
 #include "world.h"
 #include "render_system.h"
 #include "input_system.h"

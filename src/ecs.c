@@ -5,6 +5,7 @@
 #include "field.h"
 #include "log.h"
 #include "world.h"
+#include "components.h"
 
 // Case-insensitive string comparison
 int strcmp_ci(const char *s1, const char *s2) {
@@ -44,6 +45,7 @@ typedef struct {
     ComponentRegistryEntry component_info[MAX_COMPONENTS];
     void *component_data[MAX_COMPONENTS][MAX_ENTITIES];
     uint32_t component_active[MAX_ENTITIES];
+    
     uint32_t component_count;
     bool initialized;
 
@@ -136,12 +138,7 @@ void ecs_init(void) {
     g_ecs_state.systems.system_count = 0;
     
     // Register components - all components must be registered during ecs_init
-    component_register("Position", sizeof(Position));
-    component_register("BaseInfo", sizeof(BaseInfo));
-    component_register("Action", sizeof(Action));
-    component_register("FieldOfView", sizeof(CompactFieldOfView));
-    component_register("Actor", sizeof(Actor));
-    component_register("Inventory", sizeof(Inventory));
+    components_init();
 
     // Allocate memory for component data
     size_t total_memory = 0;

@@ -3,6 +3,7 @@
 #include <SDL2/SDL_ttf.h>
 #include "log.h"
 #include "world.h"
+#include "components.h"
 
 // Global SDL objects
 static SDL_Window *g_window = NULL;

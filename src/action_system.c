@@ -4,6 +4,7 @@
 #include "log.h"
 #include "dungeon.h"
 #include "entitycache_system.h"
+#include "components.h"
 #include <stdio.h>
 
 void pickup_item(Entity entity, Entity item) {

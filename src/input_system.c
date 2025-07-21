@@ -2,6 +2,7 @@
 #include <SDL2/SDL.h>
 #include "log.h"
 #include "world.h"
+#include "components.h"
 
 static bool key_processed_this_frame = false;
 

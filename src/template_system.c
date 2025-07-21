@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ecs.h"
+#include "components.h"
 
 // Template storage structure
 typedef struct {

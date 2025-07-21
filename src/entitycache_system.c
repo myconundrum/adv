@@ -2,6 +2,7 @@
 #include "entitycache_system.h"
 #include "baseds.h"
 #include "field.h"
+#include "components.h"
 
 
 ll_list g_entity_cache = {0};
