@@ -13,6 +13,8 @@
 #include "dungeon.h"
 #include "playerview.h"
 #include "statusview.h"
+#include "messages.h"
+#include "messageview.h"
 
 // Cleanup function to handle all resources
 static void cleanup_resources(void) {
@@ -23,8 +25,13 @@ static void cleanup_resources(void) {
         // Clean up view systems before render system (which calls TTF_Quit)
         playerview_cleanup();
         statusview_cleanup();
+        messageview_cleanup();
         
         render_system_cleanup();
+        
+        // Clean up message system
+        messages_shutdown();
+        
         g_world->initialized = false;
     }
     
@@ -49,6 +56,10 @@ static int init_game_systems(void) {
     // Initialize view systems
     playerview_init();
     statusview_init();
+    
+    // Initialize message systems
+    messages_init();
+    messageview_init();
 
     // Initialize and register input system
     input_system_init();
@@ -198,6 +209,15 @@ int main(int argc, char* argv[]) {
     
     g_world->initialized = true;
     LOG_INFO("Game initialized successfully, entering main loop");
+    
+    // Add some initial messages to demonstrate the message system
+    messages_add("Welcome to the Adventure Game!");
+    messages_add("Use Ctrl+M to open/close the message window.");
+    messages_add("Your quest begins in the depths of an ancient dungeon. Strange creatures roam these halls, and treasures await those brave enough to seek them.");
+    messages_add("Use arrow keys to move your character around the dungeon.");
+    messages_add("Pick up items by walking over them.");
+    messages_add("The message window can be resized and moved. Use the scrollbar or arrow keys when focused to scroll through messages.");
+    messages_add("Each new message appears on a separate line and will wrap to fit the window width when resized.");
     
     // Main loop
     while (true) {

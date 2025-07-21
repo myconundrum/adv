@@ -4,6 +4,7 @@
 #include "log.h"
 #include "dungeon.h"
 #include "components.h"
+#include "messages.h"
 #include <stdio.h>
 
 void pickup_item(Entity entity, Entity item) {
@@ -76,6 +77,12 @@ void action_move_entity(Entity entity, Direction direction, World *world) {
                 BaseInfo *base_info = (BaseInfo *)entity_get_component(item_at_pos, component_get_id("BaseInfo"));
                 if (base_info && base_info->is_carryable) {
                     LOG_INFO("Picked up item: %s", base_info->name);
+                    
+                    // Add message to message system
+                    char pickup_message[256];
+                    snprintf(pickup_message, sizeof(pickup_message), "You picked up: %s", base_info->name);
+                    messages_add(pickup_message);
+                    
                     pickup_item(entity, item_at_pos);
                 }
             }

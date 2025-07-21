@@ -6,6 +6,7 @@
 #include "components.h"
 #include "playerview.h"
 #include "statusview.h"
+#include "messageview.h"
 
 // Global SDL objects
 static SDL_Window *g_window = NULL;
@@ -319,6 +320,9 @@ static void render_system_post_update(World *world) {
     
     // Render status line LAST to ensure it's on top
     statusview_render(g_renderer, world);
+    
+    // Render message window (handles its own window)
+    messageview_render(g_renderer, world);
     
     // Present the final frame
     SDL_RenderPresent(g_renderer);

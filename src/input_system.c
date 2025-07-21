@@ -3,6 +3,7 @@
 #include "log.h"
 #include "world.h"
 #include "components.h"
+#include "messageview.h"
 
 static bool key_processed_this_frame = false;
 
@@ -19,9 +20,25 @@ void input_system(Entity entity, World *world) {
     SDL_Event event;
     
     while (SDL_PollEvent(&event)) {
+        // Let message window handle its events first
+        if (messageview_handle_event(&event)) {
+            continue; // Event was handled by message window
+        }
+        
         if (event.type == SDL_QUIT || (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)) {
             world_request_quit(world); // Request quit through World
         } else if (event.type == SDL_KEYDOWN && !key_processed_this_frame) {
+            // Handle message window toggle hotkey
+            if (event.key.keysym.sym == SDLK_m && (event.key.keysym.mod & KMOD_CTRL)) {
+                messageview_toggle();
+                key_processed_this_frame = true;
+                continue;
+            }
+            
+            // Only process movement if message window doesn't have focus
+            if (messageview_has_focus()) {
+                continue; // Let message window handle input
+            }
                 switch (event.key.keysym.sym) {
                     case SDLK_UP:
                         action->type = ACTION_MOVE;
