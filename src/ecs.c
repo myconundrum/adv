@@ -180,10 +180,10 @@ static void sparse_array_cleanup(SparseComponentArray *array) {
         array->dense_entities = NULL;
     }
     if (array->dense_components) {
-        // Free individual component data
+        // Free individual component data using memory pool
         for (uint32_t i = 0; i < array->count; i++) {
             if (array->dense_components[i]) {
-                free(array->dense_components[i]);
+                pool_free(array->dense_components[i]);
             }
         }
         free(array->dense_components);
@@ -223,8 +223,8 @@ static bool sparse_array_add(SparseComponentArray *array, Entity entity, void *c
         }
     }
     
-    // Allocate memory for new component
-    void *new_component = malloc(array->component_size);
+    // Allocate memory for new component using memory pool
+    void *new_component = pool_malloc(array->component_size);
     if (!new_component) {
         return false;
     }
@@ -269,9 +269,9 @@ static bool sparse_array_remove(SparseComponentArray *array, Entity entity) {
         return false;
     }
     
-    // Free the component data
+    // Free the component data using memory pool
     if (array->dense_components[dense_index]) {
-        free(array->dense_components[dense_index]);
+        pool_free(array->dense_components[dense_index]);
     }
     
     // Move last element to fill the gap (swap-remove)
