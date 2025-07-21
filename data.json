@@ -1,37 +1,24 @@
 {
-  "_comment": "Entity Templates - Supporting both legacy and new flags-based formats",
+  "_comment": "Entity Templates - Unified Flag-Based Format Only",
   "_documentation": {
-    "BaseInfo_Legacy_Format": {
+    "BaseInfo_Format": {
       "type": "BaseInfo",
-      "symbol": "@",
-      "color": 2,
-      "name": "Entity Name",
-      "is_carryable": 1,
-      "_note": "Legacy boolean flags (still supported for backward compatibility)"
-    },
-    "BaseInfo_New_Format": {
-      "type": "BaseInfo", 
       "symbol": "@",
       "color": 2,
       "name": "Entity Name",
       "description": "Detailed description of the entity",
       "weight": 5,
       "volume": 3,
-      "flags": 13,
-      "_note": "flags is a bitfield: CARRYABLE(1) + ALIVE(16) + CAN_CARRY(4) = 21"
+      "flags": 149,
+      "_note": "flags is a bitfield: CARRYABLE(1) + ALIVE(16) + VISIBLE(128) + CAN_CARRY(4) = 149"
     },
-    "Actor_Legacy_Format": {
-      "type": "Actor",
-      "is_player": 1,
-      "can_carry": 1,
-      "hp": 100,
-      "_note": "Legacy boolean flags (automatically converted to BaseInfo flags)"
-    },
-    "Actor_New_Format": {
+    "Actor_Format": {
       "type": "Actor", 
       "hp": 100,
       "max_hp": 100,
-      "_note": "Boolean flags moved to BaseInfo.flags field"
+      "energy": 100,
+      "energy_per_turn": 10,
+      "_note": "All boolean flags are now in BaseInfo.flags field"
     },
     "Available_Flags": {
       "ENTITY_FLAG_CARRYABLE": 1,
@@ -58,15 +45,17 @@
           "symbol": "@",
           "color": 2,
           "name": "Player",
-          "is_carryable": 0
+          "description": "A brave adventurer exploring the dungeon",
+          "weight": 80,
+          "volume": 75,
+          "flags": 150
         },
         {
           "type": "Actor",
-          "is_player": 1,
-          "can_carry": 1,
           "energy": 100,
           "energy_per_turn": 10,
           "hp": 100,
+          "max_hp": 100,
           "strength": 10,
           "attack": 5,
           "attack_bonus": 0,
@@ -101,15 +90,17 @@
           "symbol": "o",
           "color": 1,
           "name": "Orc",
-          "is_carryable": 0
+          "description": "A fierce orc warrior with crude weapons",
+          "weight": 90,
+          "volume": 80,
+          "flags": 244
         },
         {
           "type": "Actor",
-          "is_player": 0,
-          "can_carry": 1,
           "energy": 80,
           "energy_per_turn": 8,
           "hp": 60,
+          "max_hp": 60,
           "strength": 12,
           "attack": 6,
           "attack_bonus": 1,
@@ -134,7 +125,10 @@
           "symbol": "$",
           "color": 3,
           "name": "Gold",
-          "is_carryable": 1
+          "description": "Gleaming gold coins that sparkle in the light",
+          "weight": 1,
+          "volume": 1,
+          "flags": 129
         }
       ]
     },
@@ -151,7 +145,10 @@
           "symbol": "|",
           "color": 7,
           "name": "Sword",
-          "is_carryable": 1
+          "description": "A sharp steel blade with a leather-wrapped hilt",
+          "weight": 5,
+          "volume": 8,
+          "flags": 129
         }
       ]
     },
@@ -168,7 +165,10 @@
           "symbol": "%",
           "color": 6,
           "name": "stack of items",
-          "is_carryable": 1
+          "description": "A collection of various items bundled together",
+          "weight": 10,
+          "volume": 15,
+          "flags": 133
         },
         {
           "type": "Inventory",

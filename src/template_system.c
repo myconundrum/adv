@@ -227,10 +227,7 @@ Entity create_entity_from_template(const char* template_name) {
             cJSON* description_obj = cJSON_GetObjectItem(component_obj, "description");
             cJSON* weight_obj = cJSON_GetObjectItem(component_obj, "weight");
             cJSON* volume_obj = cJSON_GetObjectItem(component_obj, "volume");
-            
-            // Handle legacy and new flag fields
             cJSON* flags_obj = cJSON_GetObjectItem(component_obj, "flags");
-            cJSON* is_carryable_obj = cJSON_GetObjectItem(component_obj, "is_carryable");
             
             base_info->character = symbol_obj ? symbol_obj->valuestring[0] : '?';
             base_info->color = color_obj ? color_obj->valueint : 0;
@@ -240,14 +237,7 @@ Entity create_entity_from_template(const char* template_name) {
             base_info->description[sizeof(base_info->description) - 1] = '\0';
             base_info->weight = weight_obj ? weight_obj->valueint : 1;
             base_info->volume = volume_obj ? volume_obj->valueint : 1;
-            
-            // Initialize flags
             base_info->flags = flags_obj ? flags_obj->valueint : 0;
-            
-            // Handle legacy is_carryable field for backward compatibility
-            if (is_carryable_obj && is_carryable_obj->valueint) {
-                ENTITY_SET_FLAG(base_info->flags, ENTITY_FLAG_CARRYABLE);
-            }
             
             component_data = base_info;
         }
@@ -280,9 +270,6 @@ Entity create_entity_from_template(const char* template_name) {
             actor->damage_bonus = damage_bonus_obj ? damage_bonus_obj->valueint : 0;
             
             component_data = actor;
-            
-            // Handle legacy flags by setting them in BaseInfo if this entity has one
-            // Note: This will be handled in a post-processing step after all components are added
         }
         else if (strcmp_ci(component_type, "Action") == 0) {
             Action* action = malloc(sizeof(Action));
@@ -303,31 +290,7 @@ Entity create_entity_from_template(const char* template_name) {
         }
     }
 
-    // Post-processing: Handle legacy Actor flags by setting them in BaseInfo
-    BaseInfo *base_info = (BaseInfo *)entity_get_component(entity, component_get_id("BaseInfo"));
-    if (base_info) {
-        // Check for legacy is_player and can_carry flags in the original JSON
-        for (int i = 0; i < component_count; i++) {
-            cJSON* component_obj = cJSON_GetArrayItem(components, i);
-            if (!cJSON_IsObject(component_obj)) continue;
-            
-            cJSON* type_obj = cJSON_GetObjectItem(component_obj, "type");
-            if (!type_obj || !cJSON_IsString(type_obj)) continue;
-            
-            if (strcmp_ci(type_obj->valuestring, "Actor") == 0) {
-                cJSON* is_player_obj = cJSON_GetObjectItem(component_obj, "is_player");
-                cJSON* can_carry_obj = cJSON_GetObjectItem(component_obj, "can_carry");
-                
-                if (is_player_obj && is_player_obj->valueint) {
-                    ENTITY_SET_FLAG(base_info->flags, ENTITY_FLAG_PLAYER);
-                }
-                if (can_carry_obj && can_carry_obj->valueint) {
-                    ENTITY_SET_FLAG(base_info->flags, ENTITY_FLAG_CAN_CARRY);
-                }
-                break;
-            }
-        }
-    }
+
 
     LOG_INFO("Created entity %d from template '%s'", entity, template_name);
     return entity;
