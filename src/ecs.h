@@ -12,12 +12,17 @@
 #include "world.h"
 
 #define MAX_ENTITIES 1000
-
-// Component system
 #define MAX_COMPONENTS 32
 #define MAX_SYSTEMS 32
 
-
+// System priorities for execution ordering
+typedef enum {
+    SYSTEM_PRIORITY_FIRST = 0,      // Must run first (e.g., input)
+    SYSTEM_PRIORITY_EARLY = 100,    // Early execution (e.g., game logic)
+    SYSTEM_PRIORITY_NORMAL = 200,   // Normal execution (e.g., physics)
+    SYSTEM_PRIORITY_LATE = 300,     // Late execution (e.g., animation)
+    SYSTEM_PRIORITY_LAST = 400      // Must run last (e.g., rendering)
+} SystemPriority;
 
 
 // System function pointer types
@@ -54,6 +59,15 @@ void system_register(const char *name,  uint32_t component_mask,
     SystemFunction function, 
     SystemPreUpdateFunction pre_update_function, 
     SystemPostUpdateFunction post_update_function);
+
+// Enhanced system registration with dependencies and priorities
+void system_register_with_dependencies(const char *name, uint32_t component_mask,
+    SystemFunction function, 
+    SystemPreUpdateFunction pre_update_function, 
+    SystemPostUpdateFunction post_update_function,
+    SystemPriority priority,
+    const char **dependencies,
+    uint32_t dependency_count);
 
 bool system_run_all(World *world);
 

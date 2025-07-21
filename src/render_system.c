@@ -448,9 +448,14 @@ SDL_Renderer* render_system_get_renderer(void) {
 }
 
 void render_system_register(void) {
-    // Register system that requires Position and BaseInfo components
     uint32_t component_mask = (1 << component_get_id("Position")) | (1 << component_get_id("BaseInfo"));
-    system_register("Render System", component_mask, render_system, render_system_pre_update, render_system_post_update);
+    
+    // Render system should run last and depends on input and action systems
+    const char* dependencies[] = {"InputSystem", "ActionSystem"};
+    system_register_with_dependencies("RenderSystem", component_mask, render_system, 
+                                     render_system_pre_update, render_system_post_update,
+                                     SYSTEM_PRIORITY_LAST, dependencies, 2);
+    LOG_INFO("Render system registered with LAST priority, depends on InputSystem and ActionSystem");
 }
 
 void render_system(Entity entity, World *world) {

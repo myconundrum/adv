@@ -122,7 +122,12 @@ void action_system(Entity entity, World *world) {
 
 void action_system_register(void) {
     uint32_t component_mask = (1 << component_get_id("Action")) | (1 << component_get_id("Position"));
-    system_register("Action System", component_mask, action_system, NULL, NULL);
+    
+    // Action system depends on input system and should run early
+    const char* dependencies[] = {"InputSystem"};
+    system_register_with_dependencies("ActionSystem", component_mask, action_system, NULL, NULL,
+                                     SYSTEM_PRIORITY_EARLY, dependencies, 1);
+    LOG_INFO("Action system registered with EARLY priority, depends on InputSystem");
 }
 
 void action_system_init(void) {

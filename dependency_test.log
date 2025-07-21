@@ -1,0 +1,51 @@
+[32m[INFO] Logging system initialized (level: INFO, colors: enabled)[0m
+[32m[INFO] Starting Adventure Game - ECS[0m
+[32m[INFO] Created world instance[0m
+[32m[INFO] Registered component: Position (ID: 0, Size: 12)[0m
+[32m[INFO] Registered component: BaseInfo (ID: 1, Size: 172)[0m
+[32m[INFO] Registered component: Action (ID: 2, Size: 8)[0m
+[32m[INFO] Registered component: FieldOfView (ID: 3, Size: 304)[0m
+[32m[INFO] Registered component: Actor (ID: 4, Size: 24)[0m
+[32m[INFO] Registered component: Inventory (ID: 5, Size: 164)[0m
+[32m[INFO] Initialized sparse storage for component 'Position' (initial capacity: 16 entities)[0m
+[32m[INFO] Initialized sparse storage for component 'BaseInfo' (initial capacity: 16 entities)[0m
+[32m[INFO] Initialized sparse storage for component 'Action' (initial capacity: 16 entities)[0m
+[32m[INFO] Initialized sparse storage for component 'FieldOfView' (initial capacity: 16 entities)[0m
+[32m[INFO] Initialized sparse storage for component 'Actor' (initial capacity: 16 entities)[0m
+[32m[INFO] Initialized sparse storage for component 'Inventory' (initial capacity: 16 entities)[0m
+[32m[INFO] Total component overhead allocated: 25152 bytes (24.56 KB) - sparse storage[0m
+[32m[INFO] Memory savings: ~0.6MB compared to dense allocation[0m
+[32m[INFO] ECS initialized with 6 components using sparse storage[0m
+[32m[INFO] Loaded font: /System/Library/Fonts/Monaco.ttf[0m
+[32m[INFO] Render system initialized with z-buffer support[0m
+[32m[INFO] Registered system: RenderSystem (priority: 400, dependencies: 2)[0m
+[31m[ERROR] System 'RenderSystem' depends on non-existent system 'InputSystem'[0m
+[31m[ERROR] System dependency validation failed[0m
+[32m[INFO] Render system registered with LAST priority, depends on InputSystem and ActionSystem[0m
+[32m[INFO] Message system initialized[0m
+[32m[INFO] Message view initialized[0m
+[32m[INFO] Input system initialized[0m
+[32m[INFO] Registered system: InputSystem (priority: 0, dependencies: 0)[0m
+[31m[ERROR] System 'RenderSystem' depends on non-existent system 'ActionSystem'[0m
+[31m[ERROR] System dependency validation failed[0m
+[32m[INFO] Input system registered with FIRST priority[0m
+[32m[INFO] Action system initialized[0m
+[32m[INFO] Registered system: ActionSystem (priority: 100, dependencies: 1)[0m
+[32m[INFO] Systems sorted by dependencies and priority:[0m
+[32m[INFO]   1. InputSystem (priority: 0, order: 0)[0m
+[32m[INFO]   2. ActionSystem (priority: 100, order: 101)[0m
+[32m[INFO]   3. RenderSystem (priority: 400, order: 402)[0m
+[32m[INFO] Action system registered with EARLY priority, depends on InputSystem[0m
+[32m[INFO] Template system initialized[0m
+[32m[INFO] Loaded 5 templates from data.json[0m
+[32m[INFO] Game initialized successfully[0m
+[32m[INFO] Created GameStateManager[0m
+[32m[INFO] Initializing GameStateManager[0m
+[32m[INFO] Entering menu state[0m
+[32m[INFO] Quit requested[0m
+[32m[INFO] Shutting down game[0m
+[32m[INFO] Destroying GameStateManager[0m
+[32m[INFO] ECS shutdown complete - sparse storage cleaned up[0m
+[32m[INFO] Message view cleanup complete[0m
+[32m[INFO] Message system shutdown[0m
+[32m[INFO] Destroying world instance[0m

@@ -85,8 +85,11 @@ void input_system_register(void) {
     }
     
     uint32_t component_mask = (1 << component_get_id("Action")) | (1 << component_get_id("Actor"));
-    system_register("InputSystem", component_mask, input_system, NULL, NULL);
-    LOG_INFO("Input system registered");
+    
+    // Input system should run first since other systems depend on input
+    system_register_with_dependencies("InputSystem", component_mask, input_system, NULL, NULL,
+                                     SYSTEM_PRIORITY_FIRST, NULL, 0);
+    LOG_INFO("Input system registered with FIRST priority");
 }
 
 void input_system_init(void) {
