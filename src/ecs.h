@@ -9,7 +9,9 @@
 #include <ctype.h>
 #include "types.h"
 #include "components.h"
-#include "world.h"
+
+// Forward declaration to avoid circular includes
+struct AppState;
 
 #define MAX_ENTITIES 1000
 #define MAX_COMPONENTS 32
@@ -26,12 +28,12 @@ typedef enum {
 
 
 // System function pointer types
-typedef void (*SystemFunction)(Entity entity, World *world);
+typedef void (*SystemFunction)(Entity entity, struct AppState *app_state);
 
 // call before the system functions are called per entity.
-typedef void (*SystemPreUpdateFunction)(World *world);
+typedef void (*SystemPreUpdateFunction)(struct AppState *app_state);
 // call after the system functions are called per entity.
-typedef void (*SystemPostUpdateFunction)(World *world);
+typedef void (*SystemPostUpdateFunction)(struct AppState *app_state);
 
 // ECS Core functions
 void ecs_init(void);
@@ -69,7 +71,7 @@ void system_register_with_dependencies(const char *name, uint32_t component_mask
     const char **dependencies,
     uint32_t dependency_count);
 
-bool system_run_all(World *world);
+bool system_run_all(struct AppState *app_state);
 
 // Utility functions
 int strcmp_ci(const char *s1, const char *s2);

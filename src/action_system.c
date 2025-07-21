@@ -1,4 +1,4 @@
-#include "world.h"
+#include "appstate.h"
 #include "action_system.h"
 #include "render_system.h"
 #include "log.h"
@@ -18,25 +18,35 @@ void pickup_item(Entity entity, Entity item) {
     Position *position_item = (Position *)entity_get_component(item, component_get_id("Position"));
     if (position_item) {
         // Remove item from its current tile position
-        dungeon_remove_entity_from_position(&g_world->dungeon, item, position_item->x, position_item->y);
+        AppState *app_state = appstate_get();
+        if (app_state) {
+            dungeon_remove_entity_from_position(&app_state->dungeon, item, position_item->x, position_item->y);
+        }
         
-        // Mark item as carried
-        position_item->x = -1;
-        position_item->y = -1;
+        // Set position to indicate it's in inventory
         position_item->entity = entity;
+    }
+    
+    // Print pickup message
+    BaseInfo *item_info = (BaseInfo *)entity_get_component(item, component_get_id("BaseInfo"));
+    if (item_info) {
+        char pickup_message[256];
+        snprintf(pickup_message, sizeof(pickup_message), "You picked up: %s", item_info->name);
+        messages_add(pickup_message);
+        LOG_INFO("Picked up item: %s", item_info->name);
     }
 }
 
-void action_move_entity(Entity entity, Direction direction, World *world) {
+void action_move_entity(Entity entity, Direction direction, AppState *app_state) {
     Position *position = (Position *)entity_get_component(entity, component_get_id("Position"));
-    if (!position) {
+    if (!position || !app_state) {
         return;
     }
 
     int old_x = position->x;
     int old_y = position->y;
-    int new_x = position->x;
-    int new_y = position->y;
+    int new_x = old_x;
+    int new_y = old_y;
 
     // Calculate new position based on direction
     switch (direction) {
@@ -57,9 +67,9 @@ void action_move_entity(Entity entity, Direction direction, World *world) {
     }
 
     // Check if the new position is walkable
-    if (dungeon_is_walkable(&world->dungeon, new_x, new_y)) {
+    if (dungeon_is_walkable(&app_state->dungeon, new_x, new_y)) {
         // Remove entity from old tile position
-        dungeon_remove_entity_from_position(&world->dungeon, entity, old_x, old_y);
+        dungeon_remove_entity_from_position(&app_state->dungeon, entity, old_x, old_y);
         
         // Update entity position
         position->x = new_x;
@@ -72,45 +82,33 @@ void action_move_entity(Entity entity, Direction direction, World *world) {
         }
         
         // Place entity at new tile position
-        dungeon_place_entity_at_position(&world->dungeon, entity, new_x, new_y);
+        dungeon_place_entity_at_position(&app_state->dungeon, entity, new_x, new_y);
         
         // Check if the new position has any entities
         Entity actor_at_pos, item_at_pos;
-        if (dungeon_get_entities_at_position(&world->dungeon, new_x, new_y, &actor_at_pos, &item_at_pos)) {
-                    // Check if there's a carryable item at this position
-        if (item_at_pos != INVALID_ENTITY && item_at_pos != entity) {
-            BaseInfo *base_info = (BaseInfo *)entity_get_component(item_at_pos, component_get_id("BaseInfo"));
-            if (entity_is_carryable(item_at_pos)) {
-                LOG_INFO("Picked up item: %s", base_info->name);
-                
-                // Add message to message system
-                char pickup_message[256];
-                snprintf(pickup_message, sizeof(pickup_message), "You picked up: %s", base_info->name);
-                messages_add(pickup_message);
-                
+        if (dungeon_get_entities_at_position(&app_state->dungeon, new_x, new_y, &actor_at_pos, &item_at_pos)) {
+            // Check if there's a carryable item at this position
+            if (item_at_pos != INVALID_ENTITY && entity_is_carryable(item_at_pos)) {
                 pickup_item(entity, item_at_pos);
             }
         }
-        }
-    } else {
-        LOG_INFO("Cannot move to (%d, %d) - blocked", new_x, new_y);
     }
 }
 
 void action_quit(void) {
-    if (g_world) {
-        world_request_quit(g_world);
+    AppState *app_state = appstate_get();
+    if (app_state) {
+        app_state->quit_requested = true;
+        LOG_INFO("Quit action requested");
     }
 }
 
-
-
-void action_system(Entity entity, World *world) {
+void action_system(Entity entity, AppState *app_state) {
     Action *action = (Action *)entity_get_component(entity, component_get_id("Action"));
 
     switch (action->type) {
         case ACTION_MOVE:
-            action_move_entity(entity, (Direction)action->action_data, world);
+            action_move_entity(entity, (Direction)action->action_data, app_state);
             break;
         case ACTION_QUIT:
             action_quit();

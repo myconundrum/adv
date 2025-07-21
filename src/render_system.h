@@ -3,7 +3,9 @@
 
 #include <SDL2/SDL.h>
 #include "ecs.h"
-#include "world.h"
+
+// Forward declaration
+struct AppState;
 
 // Window and cell constants
 #define CELL_SIZE 16 // pixels
@@ -29,7 +31,7 @@
 #define WINDOW_TITLE "Adventure Game"
 
 // Rendering system function
-void render_system(Entity entity, World *world);
+void render_system(Entity entity, struct AppState *app_state);
 
 // Initialize the rendering system (includes SDL initialization)
 int render_system_init(void);

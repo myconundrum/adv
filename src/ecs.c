@@ -4,7 +4,7 @@
 #include "baseds.h"
 #include "field.h"
 #include "log.h"
-#include "world.h"
+#include "appstate.h"
 #include "components.h"
 #include "error.h"
 
@@ -129,14 +129,7 @@ typedef struct {
 // Sparse component storage for memory efficiency
 #define INITIAL_COMPONENT_CAPACITY 16
 
-typedef struct {
-    uint32_t *sparse;           // Entity -> dense index mapping (size: MAX_ENTITIES)
-    uint32_t *dense_entities;   // Dense array of entity IDs that have this component
-    void **dense_components;    // Dense array of component data
-    uint32_t count;             // Number of components currently stored
-    uint32_t capacity;          // Current capacity of dense arrays
-    size_t component_size;      // Size of individual component
-} SparseComponentArray;
+// SparseComponentArray is now defined in appstate.h
 
 // Forward declarations for sparse array functions
 static bool sparse_array_init(SparseComponentArray *array, size_t component_size);
@@ -835,9 +828,9 @@ void system_register_with_dependencies(const char *name, uint32_t component_mask
     topological_sort_systems();
 }
 
-bool system_run_all(World *world) {
-    if (!world) {
-        ERROR_SET(RESULT_ERROR_NULL_POINTER, "World pointer is NULL");
+bool system_run_all(AppState *app_state) {
+    if (!app_state) {
+        ERROR_SET(RESULT_ERROR_NULL_POINTER, "AppState pointer is NULL");
         return false;
     }
     
@@ -860,7 +853,7 @@ bool system_run_all(World *world) {
         
         // Call pre-update function if it exists
         if (system->pre_update_function) {
-            system->pre_update_function(world);
+            system->pre_update_function(app_state);
         }
         
         // Iterate through all active entities
@@ -883,7 +876,7 @@ bool system_run_all(World *world) {
             }
             
             if (has_all_components) {
-                system->function(entity, world);
+                system->function(entity, app_state);
                 entities_processed++;
             }
             
@@ -892,7 +885,7 @@ bool system_run_all(World *world) {
         
         // Call post-update function if it exists
         if (system->post_update_function) {
-            system->post_update_function(world);
+            system->post_update_function(app_state);
         }
         
         // Update performance tracking
@@ -906,8 +899,7 @@ bool system_run_all(World *world) {
     }
     
     // Check if quit was requested
-    if (world_should_quit(world)) {
-        world->quit_requested = false; // Reset for next frame
+    if (appstate_should_quit()) {
         return false;
     }
     

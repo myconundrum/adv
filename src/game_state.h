@@ -3,17 +3,17 @@
 
 #include <SDL2/SDL.h>
 #include <stdbool.h>
-#include "world.h"
+#include "appstate.h"
 #include "main_menu.h"
 #include "character_creation.h"
 
 // State handler function types
 struct GameStateManager;
-typedef void (*StateEnterFunction)(struct GameStateManager *manager, World *world);
-typedef void (*StateExitFunction)(struct GameStateManager *manager, World *world);
-typedef void (*StateInputFunction)(struct GameStateManager *manager, World *world, SDL_Event *event);
-typedef void (*StateUpdateFunction)(struct GameStateManager *manager, World *world, float delta_time);
-typedef void (*StateRenderFunction)(struct GameStateManager *manager, World *world);
+typedef void (*StateEnterFunction)(struct GameStateManager *manager);
+typedef void (*StateExitFunction)(struct GameStateManager *manager);
+typedef void (*StateInputFunction)(struct GameStateManager *manager, SDL_Event *event);
+typedef void (*StateUpdateFunction)(struct GameStateManager *manager, float delta_time);
+typedef void (*StateRenderFunction)(struct GameStateManager *manager);
 
 // State handler structure
 typedef struct {
@@ -40,9 +40,9 @@ typedef struct {
 
 // Game state manager structure
 typedef struct GameStateManager {
-    GameState current_state;
-    GameState previous_state;
-    StateHandler handlers[GAME_STATE_GAME_OVER + 1];  // One handler per state
+    AppStateEnum current_state;
+    AppStateEnum previous_state;
+    StateHandler handlers[APP_STATE_GAME_OVER + 1];  // One handler per state
     
     // State-specific data
     MenuStateData menu_data;
@@ -51,7 +51,7 @@ typedef struct GameStateManager {
     
     // State transition flags
     bool state_changed;
-    GameState requested_state;
+    AppStateEnum requested_state;
 } GameStateManager;
 
 // Game state manager functions
@@ -59,17 +59,17 @@ GameStateManager* game_state_manager_create(void);
 void game_state_manager_destroy(GameStateManager *manager);
 
 // State management
-void game_state_manager_init(GameStateManager *manager, World *world);
-void game_state_manager_set_state(GameStateManager *manager, World *world, GameState new_state);
-GameState game_state_manager_get_current_state(GameStateManager *manager);
-GameState game_state_manager_get_previous_state(GameStateManager *manager);
+void game_state_manager_init(GameStateManager *manager);
+void game_state_manager_set_state(GameStateManager *manager, AppStateEnum new_state);
+AppStateEnum game_state_manager_get_current_state(GameStateManager *manager);
+AppStateEnum game_state_manager_get_previous_state(GameStateManager *manager);
 
 // Main loop integration
-void game_state_manager_handle_input(GameStateManager *manager, World *world, SDL_Event *event);
-void game_state_manager_update(GameStateManager *manager, World *world, float delta_time);
-void game_state_manager_render(GameStateManager *manager, World *world);
+void game_state_manager_handle_input(GameStateManager *manager, SDL_Event *event);
+void game_state_manager_update(GameStateManager *manager, float delta_time);
+void game_state_manager_render(GameStateManager *manager);
 
 // Utility functions
-bool game_state_manager_should_quit(GameStateManager *manager, World *world);
+bool game_state_manager_should_quit(GameStateManager *manager);
 
 #endif // GAME_STATE_H

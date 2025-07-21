@@ -2,10 +2,12 @@
 #define INPUT_SYSTEM_H
 
 #include "ecs.h"
-#include "world.h"
+
+// Forward declaration
+struct AppState;
 
 // Process input for a specific entity
-void input_system(Entity entity, World *world);
+void input_system(Entity entity, struct AppState *app_state);
 
 // Initialize input system
 void input_system_init(void);

@@ -184,8 +184,14 @@ void character_creation_set_name(CharacterCreation *creation, const char *name) 
 }
 
 // Finalize character creation and create player entity
-Entity character_creation_finalize(CharacterCreation *creation, World *world) {
-    if (!creation || !world || !creation->stats_rolled) {
+Entity character_creation_finalize(CharacterCreation *creation) {
+    if (!creation || !creation->stats_rolled) {
+        return INVALID_ENTITY;
+    }
+    
+    AppState *app_state = appstate_get();
+    if (!app_state) {
+        LOG_ERROR("AppState not initialized");
         return INVALID_ENTITY;
     }
     
@@ -252,7 +258,7 @@ Entity character_creation_finalize(CharacterCreation *creation, World *world) {
     LOG_INFO("Added FieldOfView component to custom player");
     
     creation->creation_complete = true;
-    world->player = player;
+    app_state->player = player;
     
     LOG_INFO("Character creation complete: %s the %s %s (HP: %d, STR: %d)", 
              creation->name,
@@ -399,8 +405,7 @@ void character_creation_handle_input(CharacterCreation *creation, int key) {
 }
 
 // Character creation UI rendering
-void character_creation_render(World *world, CharacterCreation *creation) {
-    (void)world; // Suppress unused parameter warning
+void character_creation_render(CharacterCreation *creation) {
     if (!creation) return;
     
     // Get renderer from render system

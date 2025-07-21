@@ -2,16 +2,16 @@
 #include <SDL2/SDL.h>
 #include "log.h"
 #include "error.h"
-#include "world.h"
+#include "appstate.h"
 #include "components.h"
 #include "messageview.h"
 
 // Key state tracking for proper key press detection
 static bool key_was_down[SDL_NUM_SCANCODES] = {false};
 
-void input_system(Entity entity, World *world) {
-    if (!world) {
-        ERROR_SET(RESULT_ERROR_NULL_POINTER, "world cannot be NULL");
+void input_system(Entity entity, AppState *app_state) {
+    if (!app_state) {
+        ERROR_SET(RESULT_ERROR_NULL_POINTER, "app_state cannot be NULL");
         return;
     }
     
@@ -21,7 +21,7 @@ void input_system(Entity entity, World *world) {
     }
     
     // Only process input when in playing state
-    if (world_get_state(world) != GAME_STATE_PLAYING) {
+    if (appstate_get_state() != APP_STATE_PLAYING) {
         return;
     }
     
@@ -55,47 +55,61 @@ void input_system(Entity entity, World *world) {
     }
     
     // Movement input - only trigger on key press (not while held)
-    if (keystate[SDL_SCANCODE_UP] && !key_was_down[SDL_SCANCODE_UP]) {
-        action->type = ACTION_MOVE;
-        action->action_data = DIRECTION_UP;
-    } else if (keystate[SDL_SCANCODE_DOWN] && !key_was_down[SDL_SCANCODE_DOWN]) {
-        action->type = ACTION_MOVE;
-        action->action_data = DIRECTION_DOWN;
-    } else if (keystate[SDL_SCANCODE_LEFT] && !key_was_down[SDL_SCANCODE_LEFT]) {
-        action->type = ACTION_MOVE;
-        action->action_data = DIRECTION_LEFT;
-    } else if (keystate[SDL_SCANCODE_RIGHT] && !key_was_down[SDL_SCANCODE_RIGHT]) {
-        action->type = ACTION_MOVE;
-        action->action_data = DIRECTION_RIGHT;
+    if (keystate[SDL_SCANCODE_UP] || keystate[SDL_SCANCODE_W]) {
+        if (!key_was_down[SDL_SCANCODE_UP] && !key_was_down[SDL_SCANCODE_W]) {
+            action->type = ACTION_MOVE;
+            action->action_data = DIRECTION_UP;
+        }
+        key_was_down[SDL_SCANCODE_UP] = true;
+        key_was_down[SDL_SCANCODE_W] = true;
+    } else {
+        key_was_down[SDL_SCANCODE_UP] = false;
+        key_was_down[SDL_SCANCODE_W] = false;
     }
     
-    // Update key states for next frame
-    key_was_down[SDL_SCANCODE_UP] = keystate[SDL_SCANCODE_UP];
-    key_was_down[SDL_SCANCODE_DOWN] = keystate[SDL_SCANCODE_DOWN];
-    key_was_down[SDL_SCANCODE_LEFT] = keystate[SDL_SCANCODE_LEFT];
-    key_was_down[SDL_SCANCODE_RIGHT] = keystate[SDL_SCANCODE_RIGHT];
+    if (keystate[SDL_SCANCODE_DOWN] || keystate[SDL_SCANCODE_S]) {
+        if (!key_was_down[SDL_SCANCODE_DOWN] && !key_was_down[SDL_SCANCODE_S]) {
+            action->type = ACTION_MOVE;
+            action->action_data = DIRECTION_DOWN;
+        }
+        key_was_down[SDL_SCANCODE_DOWN] = true;
+        key_was_down[SDL_SCANCODE_S] = true;
+    } else {
+        key_was_down[SDL_SCANCODE_DOWN] = false;
+        key_was_down[SDL_SCANCODE_S] = false;
+    }
+    
+    if (keystate[SDL_SCANCODE_LEFT] || keystate[SDL_SCANCODE_A]) {
+        if (!key_was_down[SDL_SCANCODE_LEFT] && !key_was_down[SDL_SCANCODE_A]) {
+            action->type = ACTION_MOVE;
+            action->action_data = DIRECTION_LEFT;
+        }
+        key_was_down[SDL_SCANCODE_LEFT] = true;
+        key_was_down[SDL_SCANCODE_A] = true;
+    } else {
+        key_was_down[SDL_SCANCODE_LEFT] = false;
+        key_was_down[SDL_SCANCODE_A] = false;
+    }
+    
+    if (keystate[SDL_SCANCODE_RIGHT] || keystate[SDL_SCANCODE_D]) {
+        if (!key_was_down[SDL_SCANCODE_RIGHT] && !key_was_down[SDL_SCANCODE_D]) {
+            action->type = ACTION_MOVE;
+            action->action_data = DIRECTION_RIGHT;
+        }
+        key_was_down[SDL_SCANCODE_RIGHT] = true;
+        key_was_down[SDL_SCANCODE_D] = true;
+    } else {
+        key_was_down[SDL_SCANCODE_RIGHT] = false;
+        key_was_down[SDL_SCANCODE_D] = false;
+    }
 }
 
 void input_system_register(void) {
-    // Validate that ECS is initialized before registering
-    // We can't directly check this, but component_get_id will return INVALID_ENTITY if not initialized
-    if (component_get_id("Action") == INVALID_ENTITY || component_get_id("Actor") == INVALID_ENTITY) {
-        ERROR_SET(RESULT_ERROR_INITIALIZATION_FAILED, "Cannot register input system: required components not found");
-        return;
-    }
-    
-    uint32_t component_mask = (1 << component_get_id("Action")) | (1 << component_get_id("Actor"));
-    
-    // Input system should run first since other systems depend on input
-    system_register_with_dependencies("InputSystem", component_mask, input_system, NULL, NULL,
-                                     SYSTEM_PRIORITY_FIRST, NULL, 0);
-    LOG_INFO("Input system registered with FIRST priority");
+    uint32_t component_mask = (1 << component_get_id("Action"));
+    system_register("InputSystem", component_mask, input_system, NULL, NULL);
+    LOG_INFO("Input system registered");
 }
 
 void input_system_init(void) {
-    // Initialize key state tracking
-    for (int i = 0; i < SDL_NUM_SCANCODES; i++) {
-        key_was_down[i] = false;
-    }
     LOG_INFO("Input system initialized");
 }

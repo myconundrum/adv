@@ -249,9 +249,8 @@ void messageview_draw_scrollbar(void) {
     SDL_RenderFillRect(g_message_view.renderer, &thumb_rect);
 }
 
-void messageview_render(SDL_Renderer *main_renderer, World *world) {
+void messageview_render(SDL_Renderer *main_renderer) {
     (void)main_renderer; // Unused - we render to our own window
-    (void)world; // Unused for now
     
     if (!g_message_view.is_visible || !g_message_view.window || !g_message_view.renderer) {
         return;

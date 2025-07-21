@@ -5,7 +5,7 @@
 #include "log.h"
 #include "ecs.h"
 #include "components.h"
-#include "world.h"
+#include "appstate.h"
 #include "render_system.h"
 #include "input_system.h"
 #include "action_system.h"
@@ -22,7 +22,8 @@
 
 // Cleanup function to handle all resources
 static void cleanup_resources(void) {
-    if (g_world && g_world->initialized) {
+    AppState *as = appstate_get();
+    if (as && as->initialized) {
         template_system_cleanup();
         ecs_shutdown();
         
@@ -36,13 +37,11 @@ static void cleanup_resources(void) {
         // Clean up message system
         messages_shutdown();
         
-        g_world->initialized = false;
+        as->initialized = false;
     }
     
-    if (g_world) {
-        world_destroy(g_world);
-        g_world = NULL;
-    }
+    // Shutdown the appstate singleton
+    appstate_shutdown();
 }
 
 // Initialize game systems
@@ -107,10 +106,9 @@ int main(int argc, char* argv[]) {
     
     LOG_INFO("Starting Adventure Game - ECS");
     
-    // Create world instance
-    g_world = world_create();
-    if (!g_world) {
-        LOG_FATAL("Failed to create world instance");
+    // Initialize appstate singleton
+    if (!appstate_init()) {
+        LOG_FATAL("Failed to initialize AppState");
         return 1;
     }
     
@@ -121,7 +119,8 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
-    g_world->initialized = true;
+    AppState *as = appstate_get();
+    as->initialized = true;
     LOG_INFO("Game initialized successfully");
     
     // Create and initialize state manager
@@ -133,13 +132,13 @@ int main(int argc, char* argv[]) {
     }
     
     // Initialize the state manager with initial state
-    game_state_manager_init(state_manager, g_world);
+    game_state_manager_init(state_manager);
     
     // Timing variables for delta time
     Uint32 last_time = SDL_GetTicks();
     
     // Main loop - much simpler now!
-    while (!game_state_manager_should_quit(state_manager, g_world)) {
+    while (!game_state_manager_should_quit(state_manager)) {
         // Calculate delta time
         Uint32 current_time = SDL_GetTicks();
         float delta_time = (current_time - last_time) / 1000.0f;
@@ -148,14 +147,14 @@ int main(int argc, char* argv[]) {
         // Handle input events
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
-            game_state_manager_handle_input(state_manager, g_world, &event);
+            game_state_manager_handle_input(state_manager, &event);
         }
         
         // Update current state
-        game_state_manager_update(state_manager, g_world, delta_time);
+        game_state_manager_update(state_manager, delta_time);
         
         // Render current state
-        game_state_manager_render(state_manager, g_world);
+        game_state_manager_render(state_manager);
         
         // Cap frame rate
         SDL_Delay(16); // ~60 FPS

@@ -1,5 +1,6 @@
 #include "statusview.h"
 #include "render_system.h"
+#include "appstate.h"
 #include "components.h"
 #include "ecs.h"
 #include "log.h"
@@ -59,8 +60,8 @@ static void render_text_at_position(SDL_Renderer *renderer, const char *text, in
     }
 }
 
-void statusview_render(SDL_Renderer *renderer, World *world) {
-    if (!renderer || !world) return;
+void statusview_render(SDL_Renderer *renderer, AppState *app_state) {
+    if (!renderer || !app_state) return;
     
     // Calculate status line position and dimensions
     int status_y = STATUS_LINE_Y_OFFSET * CELL_SIZE;
@@ -80,7 +81,7 @@ void statusview_render(SDL_Renderer *renderer, World *world) {
     if (!g_status_font) return;
     
     // Get player components
-    Position *player_pos = (Position *)entity_get_component(world->player, component_get_id("Position"));
+    Position *player_pos = (Position *)entity_get_component(app_state->player, component_get_id("Position"));
     
     SDL_Color white = {255, 255, 255, 255};
     
@@ -93,10 +94,10 @@ void statusview_render(SDL_Renderer *renderer, World *world) {
     if (player_pos) {
         snprintf(status_line, sizeof(status_line), 
                 "Dungeon Level: 1  |  Position: (%d, %d)  |  Rooms: %d", 
-                player_pos->x, player_pos->y, world->dungeon.room_count);
+                player_pos->x, player_pos->y, app_state->dungeon.room_count);
     } else {
         snprintf(status_line, sizeof(status_line), 
-                "Dungeon Level: 1  |  Rooms: %d", world->dungeon.room_count);
+                "Dungeon Level: 1  |  Rooms: %d", app_state->dungeon.room_count);
     }
     render_text_at_position(renderer, status_line, x_offset, y_offset, white);
 } 

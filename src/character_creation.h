@@ -1,7 +1,7 @@
 #ifndef CHARACTER_CREATION_H
 #define CHARACTER_CREATION_H
 
-#include "world.h"
+#include "appstate.h"
 #include "ecs.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -71,10 +71,10 @@ void character_creation_select_class(CharacterCreation *creation, CharacterClass
 void character_creation_set_name(CharacterCreation *creation, const char *name);
 
 // Finalization
-Entity character_creation_finalize(CharacterCreation *creation, World *world);
+Entity character_creation_finalize(CharacterCreation *creation);
 
 // UI functions
-void character_creation_render(World *world, CharacterCreation *creation);
+void character_creation_render(CharacterCreation *creation);
 void character_creation_handle_input(CharacterCreation *creation, int key);
 
 // Utility functions

@@ -105,8 +105,7 @@ void main_menu_handle_input(MainMenu *menu, int key) {
 }
 
 // Main menu rendering
-void main_menu_render(World *world, MainMenu *menu) {
-    (void)world; // Suppress unused parameter warning
+void main_menu_render(MainMenu *menu) {
     if (!menu) return;
     
     // Get renderer from render system

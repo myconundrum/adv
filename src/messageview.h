@@ -59,7 +59,7 @@ bool messageview_is_visible(void);
 bool messageview_has_focus(void);
 
 // Rendering
-void messageview_render(SDL_Renderer *main_renderer, World *world);
+void messageview_render(SDL_Renderer *main_renderer);
 
 // Event handling
 bool messageview_handle_event(SDL_Event *event);

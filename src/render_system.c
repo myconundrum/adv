@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <SDL2/SDL_ttf.h>
 #include "log.h"
-#include "world.h"
+#include "appstate.h"
 #include "components.h"
 #include "playerview.h"
 #include "statusview.h"
@@ -15,11 +15,7 @@ static TTF_Font *g_font = NULL;
 static bool g_initialized = false;
 
 // Simple z-buffer system using arrays - now sized for game area only
-typedef struct {
-    char character;
-    uint8_t color;
-    bool has_content;
-} ZBufferCell;
+// ZBufferCell is now defined in appstate.h
 
 static ZBufferCell *g_z_buffer_0 = NULL;  // Background layer (dungeon tiles)
 static ZBufferCell *g_z_buffer_1 = NULL;  // Entity layer (entities)
@@ -132,11 +128,11 @@ static void write_to_z_buffer(ZBufferCell *buffer, int screen_x, int screen_y, c
 
 
 // Helper function to update viewport based on player position
-static void update_viewport(World *world) {
-    if (!world) return;
+static void update_viewport(AppState *app_state) {
+    if (!app_state) return;
     
     // Get player position
-    Position *player_pos = (Position *)entity_get_component(world->player, component_get_id("Position"));
+    Position *player_pos = (Position *)entity_get_component(app_state->player, component_get_id("Position"));
     if (!player_pos) return;
     
     int player_x = (int)player_pos->x;
@@ -200,8 +196,8 @@ static void cleanup_z_buffers(void) {
 }
 
 // Render the dungeon background to z-buffer 0
-static void render_dungeon_background(World *world) {
-    if (!world || !world->dungeon.width || !g_z_buffer_0) return;
+static void render_dungeon_background(AppState *app_state) {
+    if (!app_state || !app_state->dungeon.width || !g_z_buffer_0) return;
     
     // Clear z-buffer 0
     memset(g_z_buffer_0, 0, GAME_AREA_WIDTH * GAME_AREA_HEIGHT * sizeof(ZBufferCell));
@@ -218,11 +214,11 @@ static void render_dungeon_background(World *world) {
                 
                 // Get visibility status from player's FOV
                 uint8_t visibility = 0;
-                CompactFieldOfView *player_fov = (CompactFieldOfView *)entity_get_component(world->player, component_get_id("FieldOfView"));
+                CompactFieldOfView *player_fov = (CompactFieldOfView *)entity_get_component(app_state->player, component_get_id("FieldOfView"));
                 if (player_fov) {
                     if (field_is_visible_compact(player_fov, dungeon_x, dungeon_y)) {
                         visibility = 1; // Currently visible
-                    } else if (dungeon_is_explored(&world->dungeon, dungeon_x, dungeon_y)) {
+                    } else if (dungeon_is_explored(&app_state->dungeon, dungeon_x, dungeon_y)) {
                         visibility = 2; // Explored but not currently visible
                     } else {
                         visibility = 0; // Not visible and not explored
@@ -231,8 +227,8 @@ static void render_dungeon_background(World *world) {
                 
                 // Only render if visible or explored
                 if (visibility > 0) {
-                    // Get tile from dungeon
-                    Tile *tile = dungeon_get_tile(&world->dungeon, dungeon_x, dungeon_y);
+                    // Get tile from dungeon                
+                Tile *tile = dungeon_get_tile(&app_state->dungeon, dungeon_x, dungeon_y);
                     if (tile) {
                         TileInfo *info = dungeon_get_tile_info(tile->type);
                         if (info) {
@@ -254,21 +250,21 @@ static void render_dungeon_background(World *world) {
 }
 
 // Pre-update function to handle screen clearing and viewport updates
-static void render_system_pre_update(World *world) {
+static void render_system_pre_update(AppState *app_state) {
     if (!g_renderer) {
         LOG_ERROR("Renderer not initialized");
         return;
     }
     
     // Update viewport based on player position
-    update_viewport(world);
+    update_viewport(app_state);
     
     // Calculate field of view from player position
-    if (world) {
-        Position *player_pos = (Position *)entity_get_component(world->player, component_get_id("Position"));
-        CompactFieldOfView *player_fov = (CompactFieldOfView *)entity_get_component(world->player, component_get_id("FieldOfView"));
+    if (app_state) {
+        Position *player_pos = (Position *)entity_get_component(app_state->player, component_get_id("Position"));
+        CompactFieldOfView *player_fov = (CompactFieldOfView *)entity_get_component(app_state->player, component_get_id("FieldOfView"));
         if (player_pos && player_fov) {
-            field_calculate_fov_compact(player_fov, &world->dungeon, (int)player_pos->x, (int)player_pos->y);
+            field_calculate_fov_compact(player_fov, &app_state->dungeon, (int)player_pos->x, (int)player_pos->y);
         }
     }
     
@@ -278,11 +274,11 @@ static void render_system_pre_update(World *world) {
     }
     
     // Render dungeon background to z-buffer 0
-    render_dungeon_background(world);
+    render_dungeon_background(app_state);
 }
 
 // Post-update function to render from z-buffers and present the frame
-static void render_system_post_update(World *world) {
+static void render_system_post_update(AppState *app_state) {
     if (!g_renderer) return;
     
     // Clear main renderer
@@ -290,7 +286,7 @@ static void render_system_post_update(World *world) {
     SDL_RenderClear(g_renderer);
     
     // Render player view sidebar
-    playerview_render(g_renderer, world);
+    playerview_render(g_renderer, app_state);
     
     // Render game area from z-buffers: check entity layer first, then background
     for (int screen_y = 0; screen_y < GAME_AREA_HEIGHT; screen_y++) {
@@ -319,10 +315,10 @@ static void render_system_post_update(World *world) {
     }
     
     // Render status line LAST to ensure it's on top
-    statusview_render(g_renderer, world);
+    statusview_render(g_renderer, app_state);
     
     // Render message window (handles its own window)
-    messageview_render(g_renderer, world);
+    messageview_render(g_renderer);
     
     // Present the final frame
     SDL_RenderPresent(g_renderer);
@@ -458,9 +454,9 @@ void render_system_register(void) {
     LOG_INFO("Render system registered with LAST priority, depends on InputSystem and ActionSystem");
 }
 
-void render_system(Entity entity, World *world) {
-    if (!g_renderer || !world || !g_z_buffer_1) {
-        LOG_ERROR("Renderer, world, or z-buffer not initialized");
+void render_system(Entity entity, AppState *app_state) {
+    if (!g_renderer || !app_state || !g_z_buffer_1) {
+        LOG_ERROR("Renderer, app_state, or z-buffer not initialized");
         return;
     }
     
@@ -486,7 +482,7 @@ void render_system(Entity entity, World *world) {
         int dungeon_y = (int)pos->y;
         
         bool entity_visible = false;
-        CompactFieldOfView *player_fov = (CompactFieldOfView *)entity_get_component(world->player, component_get_id("FieldOfView"));
+        CompactFieldOfView *player_fov = (CompactFieldOfView *)entity_get_component(app_state->player, component_get_id("FieldOfView"));
         if (player_fov) {
             entity_visible = field_is_visible_compact(player_fov, dungeon_x, dungeon_y);
         }

@@ -1,5 +1,6 @@
 #include "playerview.h"
 #include "render_system.h"
+#include "appstate.h"
 #include "components.h"
 #include "ecs.h"
 #include "log.h"
@@ -59,8 +60,8 @@ static void render_text_at_position(SDL_Renderer *renderer, const char *text, in
     }
 }
 
-void playerview_render(SDL_Renderer *renderer, World *world) {
-    if (!renderer || !world) return;
+void playerview_render(SDL_Renderer *renderer, AppState *app_state) {
+    if (!renderer || !app_state) return;
     
     // Draw sidebar background
     SDL_SetRenderDrawColor(renderer, 32, 32, 32, 255); // Dark gray background
@@ -74,8 +75,8 @@ void playerview_render(SDL_Renderer *renderer, World *world) {
     if (!g_sidebar_font) return;
     
     // Get player components
-    BaseInfo *player_info = (BaseInfo *)entity_get_component(world->player, component_get_id("BaseInfo"));
-    Actor *player_actor = (Actor *)entity_get_component(world->player, component_get_id("Actor"));
+    BaseInfo *player_info = (BaseInfo *)entity_get_component(app_state->player, component_get_id("BaseInfo"));
+    Actor *player_actor = (Actor *)entity_get_component(app_state->player, component_get_id("Actor"));
     
     SDL_Color white = {255, 255, 255, 255};
     SDL_Color green = {0, 255, 0, 255};
