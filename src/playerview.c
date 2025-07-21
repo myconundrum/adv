@@ -82,44 +82,44 @@ void playerview_render(SDL_Renderer *renderer, World *world) {
     SDL_Color yellow = {255, 255, 0, 255};
     SDL_Color red = {255, 0, 0, 255};
     
-    int y_offset = 10;
-    int line_height = 16;
-    int x_offset = 8;
+    int y_offset = 8; // Reduced top padding
+    int line_height = 14; // Reduced line height for compactness
+    int x_offset = 6; // Reduced left padding
     
-    // Player name and symbol
+    // Player name and symbol (more compact)
     if (player_info) {
-        char name_line[32];
+        char name_line[16];
         snprintf(name_line, sizeof(name_line), "%c %s", player_info->character, player_info->name);
         render_text_at_position(renderer, name_line, x_offset, y_offset, white);
-        y_offset += line_height * 2;
+        y_offset += line_height + 4; // Small gap after name
     }
     
-    // Player stats
+    // Player stats (compact format)
     if (player_actor) {
-        char stats_line[32];
+        char stats_line[16];
         
         // HP
         SDL_Color hp_color = player_actor->hp > 70 ? green : (player_actor->hp > 30 ? yellow : red);
-        snprintf(stats_line, sizeof(stats_line), "HP: %d", player_actor->hp);
+        snprintf(stats_line, sizeof(stats_line), "HP:%d", player_actor->hp);
         render_text_at_position(renderer, stats_line, x_offset, y_offset, hp_color);
         y_offset += line_height;
         
         // Energy
-        snprintf(stats_line, sizeof(stats_line), "Energy: %d", player_actor->energy);
+        snprintf(stats_line, sizeof(stats_line), "En:%d", player_actor->energy);
         render_text_at_position(renderer, stats_line, x_offset, y_offset, white);
         y_offset += line_height;
         
         // Strength
-        snprintf(stats_line, sizeof(stats_line), "Str: %d", player_actor->strength);
+        snprintf(stats_line, sizeof(stats_line), "St:%d", player_actor->strength);
         render_text_at_position(renderer, stats_line, x_offset, y_offset, white);
         y_offset += line_height;
         
         // Attack/Defense
-        snprintf(stats_line, sizeof(stats_line), "Att: %d", player_actor->attack);
+        snprintf(stats_line, sizeof(stats_line), "At:%d", player_actor->attack);
         render_text_at_position(renderer, stats_line, x_offset, y_offset, white);
         y_offset += line_height;
         
-        snprintf(stats_line, sizeof(stats_line), "Def: %d", player_actor->defense);
+        snprintf(stats_line, sizeof(stats_line), "Df:%d", player_actor->defense);
         render_text_at_position(renderer, stats_line, x_offset, y_offset, white);
     }
 }

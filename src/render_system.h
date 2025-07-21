@@ -9,10 +9,10 @@
 #define CELL_SIZE 16 // pixels
 
 // Layout constants
-#define SIDEBAR_WIDTH 20 // in cells (reduced from 30)
-#define GAME_AREA_WIDTH 40 // in cells  
+#define SIDEBAR_WIDTH 12 // in cells (reduced from 20 for better proportions)
+#define GAME_AREA_WIDTH 48 // in cells (increased from 40)
 #define GAME_AREA_HEIGHT 30 // in cells
-#define STATUS_LINE_HEIGHT 1 // in cells (reduced from 2)
+#define STATUS_LINE_HEIGHT 1 // in cells
 
 // Total window dimensions
 #define WINDOW_WIDTH (SIDEBAR_WIDTH + GAME_AREA_WIDTH) // 60 cells total

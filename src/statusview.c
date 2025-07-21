@@ -62,10 +62,19 @@ static void render_text_at_position(SDL_Renderer *renderer, const char *text, in
 void statusview_render(SDL_Renderer *renderer, World *world) {
     if (!renderer || !world) return;
     
-    // Draw status line background
+    // Calculate status line position and dimensions
     int status_y = STATUS_LINE_Y_OFFSET * CELL_SIZE;
+    int status_width = WINDOW_WIDTH * CELL_SIZE;
+    int status_height = STATUS_LINE_HEIGHT * CELL_SIZE;
+    
+    // Clear the status line area first
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // Black background
+    SDL_Rect clear_rect = {0, status_y, status_width, status_height};
+    SDL_RenderFillRect(renderer, &clear_rect);
+    
+    // Draw status line background
     SDL_SetRenderDrawColor(renderer, 64, 64, 64, 255); // Darker gray background
-    SDL_Rect status_rect = {0, status_y, WINDOW_WIDTH * CELL_SIZE, STATUS_LINE_HEIGHT * CELL_SIZE};
+    SDL_Rect status_rect = {0, status_y, status_width, status_height};
     SDL_RenderFillRect(renderer, &status_rect);
     
     // Draw border
@@ -79,7 +88,7 @@ void statusview_render(SDL_Renderer *renderer, World *world) {
     
     SDL_Color white = {255, 255, 255, 255};
     
-    int y_offset = status_y + 4;
+    int y_offset = status_y + 2; // Reduced padding
     int x_offset = 8;
     
     // Single line status content
