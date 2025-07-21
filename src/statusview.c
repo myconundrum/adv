@@ -67,19 +67,15 @@ void statusview_render(SDL_Renderer *renderer, World *world) {
     int status_width = WINDOW_WIDTH * CELL_SIZE;
     int status_height = STATUS_LINE_HEIGHT * CELL_SIZE;
     
-    // Clear the status line area first
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // Black background
-    SDL_Rect clear_rect = {0, status_y, status_width, status_height};
-    SDL_RenderFillRect(renderer, &clear_rect);
-    
-    // Draw status line background
+    // Draw status line background - ensure it covers the full width
     SDL_SetRenderDrawColor(renderer, 64, 64, 64, 255); // Darker gray background
     SDL_Rect status_rect = {0, status_y, status_width, status_height};
     SDL_RenderFillRect(renderer, &status_rect);
     
-    // Draw border
+    // Draw top border line
     SDL_SetRenderDrawColor(renderer, 128, 128, 128, 255); // Light gray border
-    SDL_RenderDrawRect(renderer, &status_rect);
+    SDL_Rect border_rect = {0, status_y, status_width, 1};
+    SDL_RenderFillRect(renderer, &border_rect);
     
     if (!g_status_font) return;
     
@@ -88,7 +84,7 @@ void statusview_render(SDL_Renderer *renderer, World *world) {
     
     SDL_Color white = {255, 255, 255, 255};
     
-    int y_offset = status_y + 2; // Reduced padding
+    int y_offset = status_y + 2; // Small padding from top
     int x_offset = 8;
     
     // Single line status content

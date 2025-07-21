@@ -291,9 +291,6 @@ static void render_system_post_update(World *world) {
     // Render player view sidebar
     playerview_render(g_renderer, world);
     
-    // Render status line
-    statusview_render(g_renderer, world);
-    
     // Render game area from z-buffers: check entity layer first, then background
     for (int screen_y = 0; screen_y < GAME_AREA_HEIGHT; screen_y++) {
         for (int screen_x = 0; screen_x < GAME_AREA_WIDTH; screen_x++) {
@@ -319,6 +316,9 @@ static void render_system_post_update(World *world) {
             }
         }
     }
+    
+    // Render status line LAST to ensure it's on top
+    statusview_render(g_renderer, world);
     
     // Present the final frame
     SDL_RenderPresent(g_renderer);
