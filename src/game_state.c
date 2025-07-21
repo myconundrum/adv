@@ -6,6 +6,7 @@
 #include "dungeon.h"
 #include "field.h"
 #include "messages.h"
+#include "error.h"
 #include <stdlib.h>
 
 // Forward declarations for helper functions
@@ -281,7 +282,7 @@ static int create_entities_and_world(World *world) {
 GameStateManager* game_state_manager_create(void) {
     GameStateManager *manager = malloc(sizeof(GameStateManager));
     if (!manager) {
-        LOG_ERROR("Failed to allocate memory for GameStateManager");
+        ERROR_SET(RESULT_ERROR_OUT_OF_MEMORY, "Failed to allocate memory for GameStateManager (%zu bytes)", sizeof(GameStateManager));
         return NULL;
     }
     

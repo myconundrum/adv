@@ -1,6 +1,7 @@
 #include "world.h"
+#include "log.h"
+#include "error.h"
 #include <stdlib.h>
-#include <string.h>
 
 // Global world instance
 World *g_world = NULL;
@@ -8,18 +9,17 @@ World *g_world = NULL;
 World* world_create(void) {
     World *world = malloc(sizeof(World));
     if (!world) {
+        ERROR_SET(RESULT_ERROR_OUT_OF_MEMORY, "Failed to allocate memory for World structure (%zu bytes)", sizeof(World));
         return NULL;
     }
     
-    // Initialize all members to zero/default state
-    memset(world, 0, sizeof(World));
-    
-    // Set initial state
+    // Initialize world state
     world->initialized = false;
     world->quit_requested = false;
-    world->player = INVALID_ENTITY;
     world->current_state = GAME_STATE_MENU;
+    world->player = INVALID_ENTITY;
     
+    LOG_INFO("Created world instance");
     return world;
 }
 

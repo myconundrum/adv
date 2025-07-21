@@ -6,6 +6,7 @@
 #include "log.h"
 #include "world.h"
 #include "components.h"
+#include "error.h"
 
 // Hash table for component name lookups
 #define COMPONENT_HASH_TABLE_SIZE 64
@@ -356,9 +357,18 @@ uint32_t component_get_id(const char *name) {
 
 
 bool component_add(Entity entity, uint32_t component_id, void *data) {
-    if (entity >= MAX_ENTITIES || !entity_is_active(entity) || 
-        component_id >= MAX_COMPONENTS || component_id >= g_ecs_state.components.component_count) {
-        return false;
+    VALIDATE_NOT_NULL_FALSE(data, "component data");
+    
+    if (entity >= MAX_ENTITIES) {
+        ERROR_RETURN_FALSE(RESULT_ERROR_OUT_OF_BOUNDS, "Entity ID %u exceeds maximum %d", entity, MAX_ENTITIES);
+    }
+    
+    if (!entity_is_active(entity)) {
+        ERROR_RETURN_FALSE(RESULT_ERROR_ENTITY_INVALID, "Entity %u is not active", entity);
+    }
+    
+    if (component_id >= MAX_COMPONENTS || component_id >= g_ecs_state.components.component_count) {
+        ERROR_RETURN_FALSE(RESULT_ERROR_COMPONENT_NOT_FOUND, "Component ID %u is invalid (max: %u)", component_id, g_ecs_state.components.component_count);
     }
     
     // Copy data to component storage
@@ -387,8 +397,18 @@ bool component_remove(Entity entity, uint32_t component_id) {
 }
 
 void *component_get(Entity entity, uint32_t component_id) {
-    if (entity >= MAX_ENTITIES || !entity_is_active(entity) || 
-        component_id >= MAX_COMPONENTS || component_id >= g_ecs_state.components.component_count) {
+    if (entity >= MAX_ENTITIES) {
+        ERROR_SET(RESULT_ERROR_OUT_OF_BOUNDS, "Entity ID %u exceeds maximum %d", entity, MAX_ENTITIES);
+        return NULL;
+    }
+    
+    if (!entity_is_active(entity)) {
+        ERROR_SET(RESULT_ERROR_ENTITY_INVALID, "Entity %u is not active", entity);
+        return NULL;
+    }
+    
+    if (component_id >= MAX_COMPONENTS || component_id >= g_ecs_state.components.component_count) {
+        ERROR_SET(RESULT_ERROR_COMPONENT_NOT_FOUND, "Component ID %u is invalid (max: %u)", component_id, g_ecs_state.components.component_count);
         return NULL;
     }
     
@@ -397,6 +417,7 @@ void *component_get(Entity entity, uint32_t component_id) {
         return g_ecs_state.components.component_data[component_id][entity];
     }
     
+    // Component not found on entity (this is not necessarily an error)
     return NULL;
 }
 
