@@ -50,12 +50,11 @@ static int init_game_systems(void) {
     // Initialize ECS
     ecs_init();
     
-    // Initialize and register render system (includes SDL initialization)
+    // Initialize render system (includes SDL initialization) but don't register yet
     if (!render_system_init()) {
         LOG_ERROR("Failed to initialize render system");
         return 0;
     }
-    render_system_register();
 
     // Initialize view systems
     playerview_init();
@@ -65,13 +64,16 @@ static int init_game_systems(void) {
     messages_init();
     messageview_init();
 
-    // Initialize and register input system
+    // Initialize and register input system (first - no dependencies)
     input_system_init();
     input_system_register();
 
-    // Initialize and register action system
+    // Initialize and register action system (second - depends on input)
     action_system_init();
     action_system_register();
+    
+    // Register render system last (depends on input and action systems)
+    render_system_register();
     
     // Initialize template system
     if (template_system_init() != 0) {
