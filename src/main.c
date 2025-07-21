@@ -18,6 +18,7 @@
 #include "messageview.h"
 #include "main_menu.h"
 #include "character_creation.h"
+#include "game_state.h"
 
 // Cleanup function to handle all resources
 static void cleanup_resources(void) {
@@ -87,92 +88,7 @@ static int init_game_systems(void) {
     return 1;
 }
 
-// Create game entities and world
-static int create_entities_and_world(void) {
-    // Initialize dungeon
-    dungeon_init(&g_world->dungeon);
-    dungeon_generate(&g_world->dungeon);
-    LOG_INFO("Generated dungeon with %d rooms", g_world->dungeon.room_count);
-    
-    // Create player entity from template
-    g_world->player = create_entity_from_template("player");
-    if (g_world->player == INVALID_ENTITY) {
-        LOG_ERROR("Failed to create player entity from template");
-        return 0;
-    }
-    
-    // Add field of view component to player
-    CompactFieldOfView player_fov;
-    field_init_compact(&player_fov, FOV_RADIUS);
-    if (!component_add(g_world->player, component_get_id("FieldOfView"), &player_fov)) {
-        LOG_ERROR("Failed to add FieldOfView component to player");
-        return 0;
-    }
-    LOG_INFO("Added compact field of view component to player");
-    
-    // Place player at stairs up position
-    Position *player_pos = (Position *)entity_get_component(g_world->player, component_get_id("Position"));
-    if (player_pos) {
-        player_pos->x = (float)g_world->dungeon.stairs_up_x;
-        player_pos->y = (float)g_world->dungeon.stairs_up_y;
-        // Store player in tile
-        dungeon_place_entity_at_position(&g_world->dungeon, g_world->player, player_pos->x, player_pos->y);
-        LOG_INFO("Placed player at (%d, %d)", g_world->dungeon.stairs_up_x, g_world->dungeon.stairs_up_y);
-    }
-    
-    // Create enemy entity from template (orc)
-    Entity enemy = create_entity_from_template("enemy");
-    if (enemy == INVALID_ENTITY) {
-        LOG_ERROR("Failed to create enemy entity from template");
-        return 0;
-    }
-    
-    // Place enemy very close to player for debugging
-    Position *enemy_pos = (Position *)entity_get_component(enemy, component_get_id("Position"));
-    if (enemy_pos && player_pos) {
-        enemy_pos->x = player_pos->x + 1; // Right next to player
-        enemy_pos->y = player_pos->y;
-        // Store enemy in tile
-        dungeon_place_entity_at_position(&g_world->dungeon, enemy, enemy_pos->x, enemy_pos->y);
-        LOG_INFO("Placed enemy (orc) at (%d, %d) - right next to player", (int)enemy_pos->x, (int)enemy_pos->y);
-    }
-    
-    // Create gold entity from template (treasure)
-    Entity gold = create_entity_from_template("gold");
-    if (gold == INVALID_ENTITY) {
-        LOG_ERROR("Failed to create gold entity from template");
-        return 0;
-    }
-    
-    // Place gold below the player
-    Position *gold_pos = (Position *)entity_get_component(gold, component_get_id("Position"));
-    if (gold_pos && player_pos) {
-        gold_pos->x = player_pos->x;
-        gold_pos->y = player_pos->y + 1; // Below player
-        // Store gold in tile
-        dungeon_place_entity_at_position(&g_world->dungeon, gold, gold_pos->x, gold_pos->y);
-        LOG_INFO("Placed gold (treasure) at (%d, %d) - below player", (int)gold_pos->x, (int)gold_pos->y);
-    }
-    
-    // Create sword entity from template
-    Entity sword = create_entity_from_template("sword");
-    if (sword == INVALID_ENTITY) {
-        LOG_ERROR("Failed to create sword entity from template");
-        return 0;
-    }
-    
-    // Place sword to the left of the player
-    Position *sword_pos = (Position *)entity_get_component(sword, component_get_id("Position"));
-    if (sword_pos && player_pos) {
-        sword_pos->x = player_pos->x - 1; // Left of player
-        sword_pos->y = player_pos->y;
-        // Store sword in tile
-        dungeon_place_entity_at_position(&g_world->dungeon, sword, sword_pos->x, sword_pos->y);
-        LOG_INFO("Placed sword at (%d, %d) - left of player", (int)sword_pos->x, (int)sword_pos->y);
-    }
-    
-    return 1;
-}
+
 
 int main(int argc, char* argv[]) {
     (void)argc;  // Suppress unused parameter warning
@@ -204,162 +120,48 @@ int main(int argc, char* argv[]) {
     }
     
     g_world->initialized = true;
-    LOG_INFO("Game initialized successfully, starting main menu");
+    LOG_INFO("Game initialized successfully");
     
-    // Initialize menu and character creation systems
-    MainMenu main_menu;
-    CharacterCreation char_creation;
-    main_menu_init(&main_menu);
-    character_creation_init(&char_creation);
+    // Create and initialize state manager
+    GameStateManager *state_manager = game_state_manager_create();
+    if (!state_manager) {
+        LOG_FATAL("Failed to create game state manager");
+        cleanup_resources();
+        return 1;
+    }
     
-    // Set initial state to menu
-    world_set_state(g_world, GAME_STATE_MENU);
+    // Initialize the state manager with initial state
+    game_state_manager_init(state_manager, g_world);
     
-    // Main loop with state handling
-    while (true) {
-        GameState current_state = world_get_state(g_world);
+    // Timing variables for delta time
+    Uint32 last_time = SDL_GetTicks();
+    
+    // Main loop - much simpler now!
+    while (!game_state_manager_should_quit(state_manager, g_world)) {
+        // Calculate delta time
+        Uint32 current_time = SDL_GetTicks();
+        float delta_time = (current_time - last_time) / 1000.0f;
+        last_time = current_time;
         
-        // Handle input based on current state
+        // Handle input events
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT || (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)) {
-                world_request_quit(g_world);
-            }
-            
-            if (event.type == SDL_KEYDOWN) {
-                switch (current_state) {
-                    case GAME_STATE_MENU:
-                        main_menu_handle_input(&main_menu, event.key.keysym.sym);
-                        
-                        // Check for menu selection
-                        if (main_menu_has_selection(&main_menu)) {
-                            MenuOption option = main_menu_get_selection(&main_menu);
-                            switch (option) {
-                                case MENU_OPTION_NEW_GAME:
-                                    LOG_INFO("Starting new game - entering character creation");
-                                    world_set_state(g_world, GAME_STATE_CHARACTER_CREATION);
-                                    character_creation_init(&char_creation);
-                                    break;
-                                case MENU_OPTION_LOAD_GAME:
-                                    LOG_INFO("Load game selected (not implemented yet)");
-                                    // TODO: Implement load game functionality
-                                    break;
-                                case MENU_OPTION_QUIT:
-                                    world_request_quit(g_world);
-                                    break;
-                                case MENU_OPTION_COUNT:
-                                default:
-                                    // Invalid option
-                                    break;
-                            }
-                            main_menu_init(&main_menu); // Reset menu
-                        }
-                        break;
-                        
-                    case GAME_STATE_CHARACTER_CREATION:
-                        character_creation_handle_input(&char_creation, event.key.keysym.sym);
-                        
-                        // Check if character creation is complete
-                        if (char_creation.race_selected && char_creation.class_selected && 
-                            event.key.keysym.sym == SDLK_RETURN) {
-                            
-                            // Create game entities and world
-                            if (!create_entities_and_world()) {
-                                LOG_ERROR("Failed to create game entities and world");
-                                world_set_state(g_world, GAME_STATE_MENU);
-                                break;
-                            }
-                            
-                            // First, remove the old template player entity
-                            if (g_world->player != INVALID_ENTITY) {
-                                // Remove from dungeon tile system
-                                Position *old_pos = (Position *)entity_get_component(g_world->player, component_get_id("Position"));
-                                if (old_pos) {
-                                    dungeon_remove_entity_from_position(&g_world->dungeon, g_world->player, old_pos->x, old_pos->y);
-                                    LOG_INFO("Removed template player from dungeon at (%d, %d)", (int)old_pos->x, (int)old_pos->y);
-                                }
-                                
-                                // Destroy the old template player entity
-                                entity_destroy(g_world->player);
-                                LOG_INFO("Destroyed template player entity");
-                            }
-                            
-                            // Replace the template player with our created character
-                            Entity created_player = character_creation_finalize(&char_creation, g_world);
-                            if (created_player != INVALID_ENTITY) {
-                                g_world->player = created_player;
-                                
-                                // Position the custom player at the stairs up location
-                                Position *player_pos = (Position *)entity_get_component(created_player, component_get_id("Position"));
-                                if (player_pos) {
-                                    player_pos->x = (float)g_world->dungeon.stairs_up_x;
-                                    player_pos->y = (float)g_world->dungeon.stairs_up_y;
-                                    // Store player in tile
-                                    dungeon_place_entity_at_position(&g_world->dungeon, created_player, player_pos->x, player_pos->y);
-                                    LOG_INFO("Positioned custom player at (%d, %d)", g_world->dungeon.stairs_up_x, g_world->dungeon.stairs_up_y);
-                                }
-                                
-                                // Add some initial messages
-                                messages_add("Welcome to the Adventure Game!");
-                                messages_add("Your quest begins in the depths of an ancient dungeon.");
-                                messages_add("Use arrow keys to move around. Good luck!");
-                                
-                                // Start playing
-                                world_set_state(g_world, GAME_STATE_PLAYING);
-                            } else {
-                                LOG_ERROR("Failed to finalize character creation");
-                                world_set_state(g_world, GAME_STATE_MENU);
-                            }
-                        }
-                        break;
-                        
-                    case GAME_STATE_PLAYING:
-                        // Let the existing input system handle gameplay input
-                        // We'll modify the input system to only process when in PLAYING state
-                        break;
-                        
-                    default:
-                        break;
-                }
-            }
+            game_state_manager_handle_input(state_manager, g_world, &event);
         }
         
-        // Render based on current state
-        switch (current_state) {
-            case GAME_STATE_MENU:
-                main_menu_render(g_world, &main_menu);
-                break;
-                
-            case GAME_STATE_CHARACTER_CREATION:
-                character_creation_render(g_world, &char_creation);
-                break;
-                
-            case GAME_STATE_PLAYING:
-                // Run ECS systems for gameplay
-                if (!system_run_all(g_world)) {
-                    world_request_quit(g_world);
-                }
-                break;
-                
-            default:
-                break;
-        }
+        // Update current state
+        game_state_manager_update(state_manager, g_world, delta_time);
         
-        // Check for quit
-        if (world_should_quit(g_world)) {
-            break;
-        }
+        // Render current state
+        game_state_manager_render(state_manager, g_world);
         
         // Cap frame rate
         SDL_Delay(16); // ~60 FPS
     }
     
-    // Cleanup menu and character creation
-    main_menu_cleanup(&main_menu);
-    character_creation_cleanup(&char_creation);
-    
     // Cleanup
     LOG_INFO("Shutting down game");
+    game_state_manager_destroy(state_manager);
     cleanup_resources();
     log_shutdown();
     
