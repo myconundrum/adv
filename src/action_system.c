@@ -123,8 +123,8 @@ void action_system_register(void) {
     
     // Action system depends on input system and should run early
     const char* dependencies[] = {"InputSystem"};
-    system_register_with_dependencies("ActionSystem", component_mask, action_system, NULL, NULL,
-                                     SYSTEM_PRIORITY_EARLY, dependencies, 1);
+    SystemPriority priority = SYSTEM_PRIORITY_EARLY;
+    system_register("ActionSystem", component_mask, action_system, NULL, NULL, &priority, dependencies, 1);
     LOG_INFO("Action system registered with EARLY priority, depends on InputSystem");
 }
 

@@ -106,7 +106,8 @@ void input_system(Entity entity, AppState *app_state) {
 
 void input_system_register(void) {
     uint32_t component_mask = (1 << component_get_id("Action"));
-    system_register("InputSystem", component_mask, input_system, NULL, NULL);
+    SystemPriority priority = SYSTEM_PRIORITY_NORMAL;
+    system_register("InputSystem", component_mask, input_system, NULL, NULL, &priority, NULL, 0);
     LOG_INFO("Input system registered");
 }
 

@@ -448,9 +448,10 @@ void render_system_register(void) {
     
     // Render system should run last and depends on input and action systems
     const char* dependencies[] = {"InputSystem", "ActionSystem"};
-    system_register_with_dependencies("RenderSystem", component_mask, render_system, 
-                                     render_system_pre_update, render_system_post_update,
-                                     SYSTEM_PRIORITY_LAST, dependencies, 2);
+    SystemPriority priority = SYSTEM_PRIORITY_LAST;
+    system_register("RenderSystem", component_mask, render_system, 
+                   render_system_pre_update, render_system_post_update,
+                   &priority, dependencies, 2);
     LOG_INFO("Render system registered with LAST priority, depends on InputSystem and ActionSystem");
 }
 

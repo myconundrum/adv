@@ -754,24 +754,15 @@ bool component_has(Entity entity, uint32_t component_id) {
     return (g_ecs_state.components.component_active[entity] & g_ecs_state.components.component_info[component_id].bit_flag) != 0;
 }
 
-void system_register(const char *name, uint32_t component_mask,
-    SystemFunction function, 
-    SystemPreUpdateFunction pre_update_function, 
-    SystemPostUpdateFunction post_update_function) {
-    
-    // Call enhanced registration with default values
-    system_register_with_dependencies(name, component_mask, function, 
-                                     pre_update_function, post_update_function,
-                                     SYSTEM_PRIORITY_NORMAL, NULL, 0);
-}
-
-void system_register_with_dependencies(const char *name, uint32_t component_mask,
-    SystemFunction function, 
-    SystemPreUpdateFunction pre_update_function, 
-    SystemPostUpdateFunction post_update_function,
-    SystemPriority priority,
-    const char **dependencies,
-    uint32_t dependency_count) {
+// Unified system registration API - handles all registration scenarios
+void system_register(const char *name, 
+                    uint32_t component_mask,
+                    SystemFunction function, 
+                    SystemPreUpdateFunction pre_update_function,
+                    SystemPostUpdateFunction post_update_function,
+                    SystemPriority *priority,
+                    const char **dependencies,
+                    uint32_t dependency_count) {
 
     if (!g_ecs_state.initialized) {
         ERROR_SET(RESULT_ERROR_INITIALIZATION_FAILED, "Components must be registered before systems can be registered");
@@ -794,30 +785,32 @@ void system_register_with_dependencies(const char *name, uint32_t component_mask
     strncpy(system->name, name, sizeof(system->name) - 1);
     system->name[sizeof(system->name) - 1] = '\0';
     system->function = function;
-    system->pre_update_function = pre_update_function;
-    system->post_update_function = post_update_function;
+    system->pre_update_function = pre_update_function;  // Can be NULL
+    system->post_update_function = post_update_function; // Can be NULL
     system->component_mask = component_mask;
     
-    // Dependency and priority setup
-    system->priority = priority;
-    system->dependency_count = dependency_count;
+    // Dependency and priority setup with NULL handling
+    system->priority = priority ? *priority : SYSTEM_PRIORITY_NORMAL;
+    system->dependency_count = dependencies ? dependency_count : 0;
     system->enabled = true;
-    system->execution_order = priority; // Initial order, will be refined by sorting
+    system->execution_order = system->priority; // Initial order, will be refined by sorting
     system->execution_count = 0;
     system->total_execution_time = 0.0f;
     
-    // Copy dependencies
-    for (uint32_t i = 0; i < dependency_count && i < MAX_SYSTEM_DEPENDENCIES; i++) {
-        if (dependencies[i]) {
-            strncpy(system->dependencies[i], dependencies[i], sizeof(system->dependencies[i]) - 1);
-            system->dependencies[i][sizeof(system->dependencies[i]) - 1] = '\0';
+    // Copy dependencies if provided
+    if (dependencies && dependency_count > 0) {
+        for (uint32_t i = 0; i < dependency_count && i < MAX_SYSTEM_DEPENDENCIES; i++) {
+            if (dependencies[i]) {
+                strncpy(system->dependencies[i], dependencies[i], sizeof(system->dependencies[i]) - 1);
+                system->dependencies[i][sizeof(system->dependencies[i]) - 1] = '\0';
+            }
         }
     }
     
     g_ecs_state.systems.system_count++;
     g_ecs_state.systems.needs_sorting = true;
     
-    LOG_INFO("Registered system: %s (priority: %d, dependencies: %d)", name, priority, dependency_count);
+    LOG_INFO("Registered system: %s (priority: %d, dependencies: %d)", name, system->priority, system->dependency_count);
     
     // Validate and sort systems after registration
     if (!validate_system_dependencies()) {
@@ -826,6 +819,33 @@ void system_register_with_dependencies(const char *name, uint32_t component_mask
     }
     
     topological_sort_systems();
+}
+
+// Legacy function - use system_register instead
+void system_register_basic(const char *name, uint32_t component_mask,
+    SystemFunction function, 
+    SystemPreUpdateFunction pre_update_function, 
+    SystemPostUpdateFunction post_update_function) {
+    
+    // Call unified registration with default values
+    system_register(name, component_mask, function, 
+                   pre_update_function, post_update_function,
+                   NULL, NULL, 0);
+}
+
+// Legacy function - use system_register instead  
+void system_register_with_dependencies(const char *name, uint32_t component_mask,
+    SystemFunction function, 
+    SystemPreUpdateFunction pre_update_function, 
+    SystemPostUpdateFunction post_update_function,
+    SystemPriority priority,
+    const char **dependencies,
+    uint32_t dependency_count) {
+
+    // Call unified registration
+    system_register(name, component_mask, function, 
+                   pre_update_function, post_update_function,
+                   &priority, dependencies, dependency_count);
 }
 
 bool system_run_all(AppState *app_state) {

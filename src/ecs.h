@@ -56,13 +56,27 @@ bool component_has(Entity entity, uint32_t component_id);
 uint32_t component_register(const char *name, size_t size);
 uint32_t component_get_id(const char *name);
 
-// System management
-void system_register(const char *name,  uint32_t component_mask,
+// System management - Unified registration API
+// All parameters after 'function' are optional (can be NULL):
+// - pre_update_function, post_update_function: can be NULL
+// - priority: can be NULL for SYSTEM_PRIORITY_NORMAL default
+// - dependencies: can be NULL if no dependencies
+// - dependency_count: should be 0 if dependencies is NULL
+void system_register(const char *name, 
+                    uint32_t component_mask,
+                    SystemFunction function, 
+                    SystemPreUpdateFunction pre_update_function,
+                    SystemPostUpdateFunction post_update_function,
+                    SystemPriority *priority,
+                    const char **dependencies,
+                    uint32_t dependency_count);
+
+// Legacy functions - deprecated, use system_register instead
+void system_register_basic(const char *name,  uint32_t component_mask,
     SystemFunction function, 
     SystemPreUpdateFunction pre_update_function, 
     SystemPostUpdateFunction post_update_function);
 
-// Enhanced system registration with dependencies and priorities
 void system_register_with_dependencies(const char *name, uint32_t component_mask,
     SystemFunction function, 
     SystemPreUpdateFunction pre_update_function, 
