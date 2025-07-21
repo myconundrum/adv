@@ -11,10 +11,13 @@
 #include "action_system.h"
 #include "template_system.h"
 #include "dungeon.h"
+#include "field.h"
 #include "playerview.h"
 #include "statusview.h"
 #include "messages.h"
 #include "messageview.h"
+#include "main_menu.h"
+#include "character_creation.h"
 
 // Cleanup function to handle all resources
 static void cleanup_resources(void) {
@@ -141,7 +144,7 @@ static int create_entities_and_world(void) {
         return 0;
     }
     
-    // Place gold very close to player for debugging
+    // Place gold below the player
     Position *gold_pos = (Position *)entity_get_component(gold, component_get_id("Position"));
     if (gold_pos && player_pos) {
         gold_pos->x = player_pos->x;
@@ -158,7 +161,7 @@ static int create_entities_and_world(void) {
         return 0;
     }
     
-    // Place sword very close to player for debugging
+    // Place sword to the left of the player
     Position *sword_pos = (Position *)entity_get_component(sword, component_get_id("Position"));
     if (sword_pos && player_pos) {
         sword_pos->x = player_pos->x - 1; // Left of player
@@ -200,38 +203,160 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
-    // Create game entities and world
-    if (!create_entities_and_world()) {
-        LOG_FATAL("Failed to create game entities and world");
-        cleanup_resources();
-        return 1;
-    }
-    
     g_world->initialized = true;
-    LOG_INFO("Game initialized successfully, entering main loop");
+    LOG_INFO("Game initialized successfully, starting main menu");
     
-    // Add some initial messages to demonstrate the message system
-    messages_add("Welcome to the Adventure Game!");
-    messages_add("Use Ctrl+M to open/close the message window.");
-    messages_add("Your quest begins in the depths of an ancient dungeon. Strange creatures roam these halls, and treasures await those brave enough to seek them.");
-    messages_add("Use arrow keys to move your character around the dungeon.");
-    messages_add("Pick up items by walking over them.");
-    messages_add("The message window can be resized and moved. Use the scrollbar or arrow keys when focused to scroll through messages.");
-    messages_add("Each new message appears on a separate line and will wrap to fit the window width when resized.");
+    // Initialize menu and character creation systems
+    MainMenu main_menu;
+    CharacterCreation char_creation;
+    main_menu_init(&main_menu);
+    character_creation_init(&char_creation);
     
-    // Show message window by default
-    messageview_show();
+    // Set initial state to menu
+    world_set_state(g_world, GAME_STATE_MENU);
     
-    // Main loop
+    // Main loop with state handling
     while (true) {
-        // Run ECS systems (this will handle input, actions, rendering, and frame presentation)
-        if (!system_run_all(g_world)) {
-            break; // Quit requested
+        GameState current_state = world_get_state(g_world);
+        
+        // Handle input based on current state
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT || (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)) {
+                world_request_quit(g_world);
+            }
+            
+            if (event.type == SDL_KEYDOWN) {
+                switch (current_state) {
+                    case GAME_STATE_MENU:
+                        main_menu_handle_input(&main_menu, event.key.keysym.sym);
+                        
+                        // Check for menu selection
+                        if (main_menu_has_selection(&main_menu)) {
+                            MenuOption option = main_menu_get_selection(&main_menu);
+                            switch (option) {
+                                case MENU_OPTION_NEW_GAME:
+                                    LOG_INFO("Starting new game - entering character creation");
+                                    world_set_state(g_world, GAME_STATE_CHARACTER_CREATION);
+                                    character_creation_init(&char_creation);
+                                    break;
+                                case MENU_OPTION_LOAD_GAME:
+                                    LOG_INFO("Load game selected (not implemented yet)");
+                                    // TODO: Implement load game functionality
+                                    break;
+                                case MENU_OPTION_QUIT:
+                                    world_request_quit(g_world);
+                                    break;
+                                case MENU_OPTION_COUNT:
+                                default:
+                                    // Invalid option
+                                    break;
+                            }
+                            main_menu_init(&main_menu); // Reset menu
+                        }
+                        break;
+                        
+                    case GAME_STATE_CHARACTER_CREATION:
+                        character_creation_handle_input(&char_creation, event.key.keysym.sym);
+                        
+                        // Check if character creation is complete
+                        if (char_creation.race_selected && char_creation.class_selected && 
+                            event.key.keysym.sym == SDLK_RETURN) {
+                            
+                            // Create game entities and world
+                            if (!create_entities_and_world()) {
+                                LOG_ERROR("Failed to create game entities and world");
+                                world_set_state(g_world, GAME_STATE_MENU);
+                                break;
+                            }
+                            
+                            // First, remove the old template player entity
+                            if (g_world->player != INVALID_ENTITY) {
+                                // Remove from dungeon tile system
+                                Position *old_pos = (Position *)entity_get_component(g_world->player, component_get_id("Position"));
+                                if (old_pos) {
+                                    dungeon_remove_entity_from_position(&g_world->dungeon, g_world->player, old_pos->x, old_pos->y);
+                                    LOG_INFO("Removed template player from dungeon at (%d, %d)", (int)old_pos->x, (int)old_pos->y);
+                                }
+                                
+                                // Destroy the old template player entity
+                                entity_destroy(g_world->player);
+                                LOG_INFO("Destroyed template player entity");
+                            }
+                            
+                            // Replace the template player with our created character
+                            Entity created_player = character_creation_finalize(&char_creation, g_world);
+                            if (created_player != INVALID_ENTITY) {
+                                g_world->player = created_player;
+                                
+                                // Position the custom player at the stairs up location
+                                Position *player_pos = (Position *)entity_get_component(created_player, component_get_id("Position"));
+                                if (player_pos) {
+                                    player_pos->x = (float)g_world->dungeon.stairs_up_x;
+                                    player_pos->y = (float)g_world->dungeon.stairs_up_y;
+                                    // Store player in tile
+                                    dungeon_place_entity_at_position(&g_world->dungeon, created_player, player_pos->x, player_pos->y);
+                                    LOG_INFO("Positioned custom player at (%d, %d)", g_world->dungeon.stairs_up_x, g_world->dungeon.stairs_up_y);
+                                }
+                                
+                                // Add some initial messages
+                                messages_add("Welcome to the Adventure Game!");
+                                messages_add("Your quest begins in the depths of an ancient dungeon.");
+                                messages_add("Use arrow keys to move around. Good luck!");
+                                
+                                // Start playing
+                                world_set_state(g_world, GAME_STATE_PLAYING);
+                            } else {
+                                LOG_ERROR("Failed to finalize character creation");
+                                world_set_state(g_world, GAME_STATE_MENU);
+                            }
+                        }
+                        break;
+                        
+                    case GAME_STATE_PLAYING:
+                        // Let the existing input system handle gameplay input
+                        // We'll modify the input system to only process when in PLAYING state
+                        break;
+                        
+                    default:
+                        break;
+                }
+            }
+        }
+        
+        // Render based on current state
+        switch (current_state) {
+            case GAME_STATE_MENU:
+                main_menu_render(g_world, &main_menu);
+                break;
+                
+            case GAME_STATE_CHARACTER_CREATION:
+                character_creation_render(g_world, &char_creation);
+                break;
+                
+            case GAME_STATE_PLAYING:
+                // Run ECS systems for gameplay
+                if (!system_run_all(g_world)) {
+                    world_request_quit(g_world);
+                }
+                break;
+                
+            default:
+                break;
+        }
+        
+        // Check for quit
+        if (world_should_quit(g_world)) {
+            break;
         }
         
         // Cap frame rate
         SDL_Delay(16); // ~60 FPS
     }
+    
+    // Cleanup menu and character creation
+    main_menu_cleanup(&main_menu);
+    character_creation_cleanup(&char_creation);
     
     // Cleanup
     LOG_INFO("Shutting down game");

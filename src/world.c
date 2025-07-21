@@ -18,6 +18,7 @@ World* world_create(void) {
     world->initialized = false;
     world->quit_requested = false;
     world->player = INVALID_ENTITY;
+    world->current_state = GAME_STATE_MENU;
     
     return world;
 }
@@ -39,4 +40,18 @@ bool world_should_quit(World *world) {
         return world->quit_requested;
     }
     return false;
+}
+
+// Game state management
+void world_set_state(World *world, GameState state) {
+    if (world) {
+        world->current_state = state;
+    }
+}
+
+GameState world_get_state(World *world) {
+    if (world) {
+        return world->current_state;
+    }
+    return GAME_STATE_MENU;
 } 

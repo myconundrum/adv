@@ -546,4 +546,4 @@ void character_creation_render(World *world, CharacterCreation *creation) {
     }
     
     SDL_RenderPresent(renderer);
-} 
+}

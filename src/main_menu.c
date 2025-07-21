@@ -169,4 +169,4 @@ MenuOption main_menu_get_selection(const MainMenu *menu) {
 bool main_menu_has_selection(const MainMenu *menu) {
     if (!menu) return false;
     return menu->option_selected;
-} 
+}

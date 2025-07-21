@@ -32,4 +32,4 @@ void main_menu_render(World *world, MainMenu *menu);
 MenuOption main_menu_get_selection(const MainMenu *menu);
 bool main_menu_has_selection(const MainMenu *menu);
 
-#endif 
+#endif

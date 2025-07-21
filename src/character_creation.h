@@ -83,4 +83,4 @@ const char* character_creation_get_class_name(CharacterClass class);
 const char* character_creation_get_stat_name(int stat_index);
 int character_creation_get_ability_modifier(uint8_t ability_score);
 
-#endif 
+#endif

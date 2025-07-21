@@ -5,64 +5,63 @@
 #include "components.h"
 #include "messageview.h"
 
-static bool key_processed_this_frame = false;
+// Key state tracking for proper key press detection
+static bool key_was_down[SDL_NUM_SCANCODES] = {false};
 
 void input_system(Entity entity, World *world) {
-    (void)world; // Unused parameter
+    if (!world) return;
+    
+    // Only process input when in playing state
+    if (world_get_state(world) != GAME_STATE_PLAYING) {
+        return;
+    }
+    
     Action *action = (Action *)entity_get_component(entity, component_get_id("Action"));
+    if (!action) return;
 
     // Reset action to none at the start of each frame
     action->type = ACTION_NONE;
     action->action_data = DIRECTION_NONE;
-    key_processed_this_frame = false;
     
-    // Poll and process all events
-    SDL_Event event;
+    // Get current keyboard state
+    const Uint8 *keystate = SDL_GetKeyboardState(NULL);
     
-    while (SDL_PollEvent(&event)) {
-        // Let message window handle its events first
-        if (messageview_handle_event(&event)) {
-            continue; // Event was handled by message window
+    // Handle message window toggle hotkey (Ctrl+M)
+    if (keystate[SDL_SCANCODE_M] && (SDL_GetModState() & KMOD_CTRL)) {
+        if (!key_was_down[SDL_SCANCODE_M]) {
+            messageview_toggle();
         }
-        
-        if (event.type == SDL_QUIT || (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)) {
-            world_request_quit(world); // Request quit through World
-        } else if (event.type == SDL_KEYDOWN && !key_processed_this_frame) {
-            // Handle message window toggle hotkey
-            if (event.key.keysym.sym == SDLK_m && (event.key.keysym.mod & KMOD_CTRL)) {
-                messageview_toggle();
-                key_processed_this_frame = true;
-                continue;
-            }
-            
-            // Only process movement if message window doesn't have focus
-            if (messageview_has_focus()) {
-                continue; // Let message window handle input
-            }
-                switch (event.key.keysym.sym) {
-                    case SDLK_UP:
-                        action->type = ACTION_MOVE;
-                        action->action_data = DIRECTION_UP;
-                        key_processed_this_frame = true;
-                        break;
-                    case SDLK_DOWN:
-                        action->type = ACTION_MOVE;
-                        action->action_data = DIRECTION_DOWN;
-                        key_processed_this_frame = true;
-                        break;
-                    case SDLK_LEFT:
-                        action->type = ACTION_MOVE;
-                        action->action_data = DIRECTION_LEFT;
-                        key_processed_this_frame = true;
-                        break;
-                    case SDLK_RIGHT:
-                        action->type = ACTION_MOVE;
-                        action->action_data = DIRECTION_RIGHT;
-                        key_processed_this_frame = true;
-                        break;
-                }
-        }
+        key_was_down[SDL_SCANCODE_M] = true;
+        return;
+    } else {
+        key_was_down[SDL_SCANCODE_M] = false;
     }
+    
+    // Only process movement if message window doesn't have focus
+    if (messageview_has_focus()) {
+        return;
+    }
+    
+    // Movement input - only trigger on key press (not while held)
+    if (keystate[SDL_SCANCODE_UP] && !key_was_down[SDL_SCANCODE_UP]) {
+        action->type = ACTION_MOVE;
+        action->action_data = DIRECTION_UP;
+    } else if (keystate[SDL_SCANCODE_DOWN] && !key_was_down[SDL_SCANCODE_DOWN]) {
+        action->type = ACTION_MOVE;
+        action->action_data = DIRECTION_DOWN;
+    } else if (keystate[SDL_SCANCODE_LEFT] && !key_was_down[SDL_SCANCODE_LEFT]) {
+        action->type = ACTION_MOVE;
+        action->action_data = DIRECTION_LEFT;
+    } else if (keystate[SDL_SCANCODE_RIGHT] && !key_was_down[SDL_SCANCODE_RIGHT]) {
+        action->type = ACTION_MOVE;
+        action->action_data = DIRECTION_RIGHT;
+    }
+    
+    // Update key states for next frame
+    key_was_down[SDL_SCANCODE_UP] = keystate[SDL_SCANCODE_UP];
+    key_was_down[SDL_SCANCODE_DOWN] = keystate[SDL_SCANCODE_DOWN];
+    key_was_down[SDL_SCANCODE_LEFT] = keystate[SDL_SCANCODE_LEFT];
+    key_was_down[SDL_SCANCODE_RIGHT] = keystate[SDL_SCANCODE_RIGHT];
 }
 
 void input_system_register(void) {
@@ -71,5 +70,9 @@ void input_system_register(void) {
 }
 
 void input_system_init(void) {
+    // Initialize key state tracking
+    for (int i = 0; i < SDL_NUM_SCANCODES; i++) {
+        key_was_down[i] = false;
+    }
     LOG_INFO("Input system initialized");
 }
