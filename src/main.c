@@ -19,9 +19,12 @@ static void cleanup_resources(void) {
     if (g_world && g_world->initialized) {
         template_system_cleanup();
         ecs_shutdown();
-        render_system_cleanup();
+        
+        // Clean up view systems before render system (which calls TTF_Quit)
         playerview_cleanup();
         statusview_cleanup();
+        
+        render_system_cleanup();
         g_world->initialized = false;
     }
     
