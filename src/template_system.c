@@ -1,6 +1,7 @@
 #include "template_system.h"
 #include <cjson/cJSON.h>
 #include "log.h"
+#include "error.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -43,10 +44,16 @@ void template_system_cleanup(void) {
 }
 
 int load_templates_from_file(const char* filename) {
+    VALIDATE_NOT_NULL(filename, "filename");
+    
+    // Check for empty filename
+    if (strlen(filename) == 0) {
+        ERROR_RETURN(RESULT_ERROR_INVALID_PARAMETER, "Filename cannot be empty");
+    }
+    
     FILE* file = fopen(filename, "r");
     if (!file) {
-        LOG_ERROR("Failed to open template file: %s", filename);
-        return -1;
+        ERROR_RETURN(RESULT_ERROR_FILE_IO, "Failed to open template file: %s", filename);
     }
 
     // Read file content
@@ -140,24 +147,35 @@ int load_templates_from_file(const char* filename) {
 }
 
 Entity create_entity_from_template(const char* template_name) {
+    if (!template_name) {
+        ERROR_SET(RESULT_ERROR_NULL_POINTER, "template_name cannot be NULL");
+        return INVALID_ENTITY;
+    }
+    
+    // Check for empty template name
+    if (strlen(template_name) == 0) {
+        ERROR_SET(RESULT_ERROR_INVALID_PARAMETER, "Template name cannot be empty");
+        return INVALID_ENTITY;
+    }
+    
     // Find template
     Template* template = NULL;
     for (int i = 0; i < template_count; i++) {
-        if (strcmp_ci(templates[i].name, template_name) == 0) {
+        if (templates[i].name && strcmp(templates[i].name, template_name) == 0) {
             template = &templates[i];
             break;
         }
     }
 
     if (!template) {
-        LOG_ERROR("Template '%s' not found", template_name);
+        ERROR_SET(RESULT_ERROR_NOT_FOUND, "Template '%s' not found", template_name);
         return INVALID_ENTITY;
     }
 
     // Create entity
     Entity entity = entity_create();
     if (entity == INVALID_ENTITY) {
-        LOG_ERROR("Failed to create entity from template '%s'", template_name);
+        ERROR_SET(RESULT_ERROR_INITIALIZATION_FAILED, "Failed to create entity from template '%s'", template_name);
         return INVALID_ENTITY;
     }
 

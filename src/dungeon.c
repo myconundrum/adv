@@ -1,9 +1,11 @@
 #include "dungeon.h"
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include "ecs.h"
+#include "log.h"
+#include "error.h"
 #include "components.h"
+#include "ecs.h"
+#include <stdlib.h>
+#include <time.h>
+#include <string.h>
 
 // Tile information lookup table
 static TileInfo tile_info_table[TILE_TYPE_COUNT];
@@ -255,27 +257,51 @@ void dungeon_mark_explored(Dungeon *dungeon, int x, int y) {
 
 // Tile-based entity management functions
 void dungeon_place_entity_at_position(Dungeon *dungeon, Entity entity, int x, int y) {
-    Tile *tile = dungeon_get_tile(dungeon, x, y);
-    if (!tile || entity == INVALID_ENTITY) {
+    if (!dungeon) {
+        ERROR_SET(RESULT_ERROR_NULL_POINTER, "dungeon cannot be NULL");
         return;
     }
     
-    // Check if entity has Actor component to determine where to place it
+    if (entity == INVALID_ENTITY) {
+        ERROR_SET(RESULT_ERROR_ENTITY_INVALID, "Cannot place invalid entity");
+        return;
+    }
+    
+    if (x < 0 || x >= DUNGEON_WIDTH || y < 0 || y >= DUNGEON_HEIGHT) {
+        ERROR_SET(RESULT_ERROR_OUT_OF_BOUNDS, "Position (%d, %d) is outside dungeon bounds (0--%d, 0--%d)", 
+                  x, y, DUNGEON_WIDTH-1, DUNGEON_HEIGHT-1);
+        return;
+    }
+    
+    Tile *tile = &dungeon->tiles[x][y];
+    
+    // Determine entity type and place in appropriate slot
     Actor *actor = (Actor *)entity_get_component(entity, component_get_id("Actor"));
     if (actor) {
-        // It's an actor, place in actor slot
         tile->actor = entity;
     } else {
-        // It's an item, place in item slot
         tile->item = entity;
     }
 }
 
 void dungeon_remove_entity_from_position(Dungeon *dungeon, Entity entity, int x, int y) {
-    Tile *tile = dungeon_get_tile(dungeon, x, y);
-    if (!tile || entity == INVALID_ENTITY) {
+    if (!dungeon) {
+        ERROR_SET(RESULT_ERROR_NULL_POINTER, "dungeon cannot be NULL");
         return;
     }
+    
+    if (entity == INVALID_ENTITY) {
+        ERROR_SET(RESULT_ERROR_ENTITY_INVALID, "Cannot remove invalid entity");
+        return;
+    }
+    
+    if (x < 0 || x >= DUNGEON_WIDTH || y < 0 || y >= DUNGEON_HEIGHT) {
+        ERROR_SET(RESULT_ERROR_OUT_OF_BOUNDS, "Position (%d, %d) is outside dungeon bounds (0--%d, 0--%d)", 
+                  x, y, DUNGEON_WIDTH-1, DUNGEON_HEIGHT-1);
+        return;
+    }
+    
+    Tile *tile = &dungeon->tiles[x][y];
     
     // Remove entity from appropriate slot
     if (tile->actor == entity) {
@@ -287,12 +313,17 @@ void dungeon_remove_entity_from_position(Dungeon *dungeon, Entity entity, int x,
 }
 
 bool dungeon_get_entities_at_position(Dungeon *dungeon, int x, int y, Entity *actor_out, Entity *item_out) {
-    Tile *tile = dungeon_get_tile(dungeon, x, y);
-    if (!tile) {
+    VALIDATE_NOT_NULL_FALSE(dungeon, "dungeon");
+    
+    if (x < 0 || x >= DUNGEON_WIDTH || y < 0 || y >= DUNGEON_HEIGHT) {
+        ERROR_SET(RESULT_ERROR_OUT_OF_BOUNDS, "Position (%d, %d) is outside dungeon bounds (0--%d, 0--%d)", 
+                  x, y, DUNGEON_WIDTH-1, DUNGEON_HEIGHT-1);
         if (actor_out) *actor_out = INVALID_ENTITY;
         if (item_out) *item_out = INVALID_ENTITY;
         return false;
     }
+    
+    Tile *tile = &dungeon->tiles[x][y];
     
     if (actor_out) *actor_out = tile->actor;
     if (item_out) *item_out = tile->item;

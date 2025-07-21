@@ -24,34 +24,49 @@ World* world_create(void) {
 }
 
 void world_destroy(World *world) {
-    if (world) {
-        free(world);
+    if (!world) {
+        ERROR_SET(RESULT_ERROR_NULL_POINTER, "world cannot be NULL");
+        return;
     }
+    
+    LOG_INFO("Destroying world instance");
+    free(world);
 }
 
 void world_request_quit(World *world) {
-    if (world) {
-        world->quit_requested = true;
+    if (!world) {
+        ERROR_SET(RESULT_ERROR_NULL_POINTER, "world cannot be NULL");
+        return;
     }
+    
+    world->quit_requested = true;
+    LOG_INFO("Quit requested");
 }
 
 bool world_should_quit(World *world) {
-    if (world) {
-        return world->quit_requested;
-    }
-    return false;
+    VALIDATE_NOT_NULL_FALSE(world, "world");
+    
+    return world->quit_requested;
 }
 
 // Game state management
 void world_set_state(World *world, GameState state) {
-    if (world) {
-        world->current_state = state;
+    if (!world) {
+        ERROR_SET(RESULT_ERROR_NULL_POINTER, "world cannot be NULL");
+        return;
     }
+    
+    if (state < 0 || state > GAME_STATE_GAME_OVER) {
+        ERROR_SET(RESULT_ERROR_INVALID_PARAMETER, "Invalid game state: %d", state);
+        return;
+    }
+    
+    world->current_state = state;
+    LOG_INFO("Game state changed to %d", state);
 }
 
 GameState world_get_state(World *world) {
-    if (world) {
-        return world->current_state;
-    }
-    return GAME_STATE_MENU;
+    VALIDATE_NOT_NULL_FALSE(world, "world");
+    
+    return world->current_state;
 } 

@@ -1,6 +1,7 @@
 #include "input_system.h"
 #include <SDL2/SDL.h>
 #include "log.h"
+#include "error.h"
 #include "world.h"
 #include "components.h"
 #include "messageview.h"
@@ -9,7 +10,15 @@
 static bool key_was_down[SDL_NUM_SCANCODES] = {false};
 
 void input_system(Entity entity, World *world) {
-    if (!world) return;
+    if (!world) {
+        ERROR_SET(RESULT_ERROR_NULL_POINTER, "world cannot be NULL");
+        return;
+    }
+    
+    if (entity == INVALID_ENTITY) {
+        ERROR_SET(RESULT_ERROR_ENTITY_INVALID, "Invalid entity passed to input system");
+        return;
+    }
     
     // Only process input when in playing state
     if (world_get_state(world) != GAME_STATE_PLAYING) {
@@ -17,7 +26,10 @@ void input_system(Entity entity, World *world) {
     }
     
     Action *action = (Action *)entity_get_component(entity, component_get_id("Action"));
-    if (!action) return;
+    if (!action) {
+        // Not having an Action component is not an error for input system
+        return;
+    }
 
     // Reset action to none at the start of each frame
     action->type = ACTION_NONE;
@@ -65,8 +77,16 @@ void input_system(Entity entity, World *world) {
 }
 
 void input_system_register(void) {
+    // Validate that ECS is initialized before registering
+    // We can't directly check this, but component_get_id will return INVALID_ENTITY if not initialized
+    if (component_get_id("Action") == INVALID_ENTITY || component_get_id("Actor") == INVALID_ENTITY) {
+        ERROR_SET(RESULT_ERROR_INITIALIZATION_FAILED, "Cannot register input system: required components not found");
+        return;
+    }
+    
     uint32_t component_mask = (1 << component_get_id("Action")) | (1 << component_get_id("Actor"));
-    system_register("Input System", component_mask, input_system, NULL, NULL);
+    system_register("InputSystem", component_mask, input_system, NULL, NULL);
+    LOG_INFO("Input system registered");
 }
 
 void input_system_init(void) {
