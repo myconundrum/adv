@@ -470,6 +470,12 @@ void render_system(Entity entity, AppState *app_state) {
         return;
     }
     
+    // Don't render entities that are in someone's inventory
+    if (pos->entity != INVALID_ENTITY) {
+        // This entity is being carried by someone, don't render on map
+        return;
+    }
+    
     // Convert world coordinates to screen coordinates (relative to viewport)
     int screen_x = (int)(pos->x - g_viewport_x);
     int screen_y = (int)(pos->y - g_viewport_y);
