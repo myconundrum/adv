@@ -5,12 +5,8 @@
 #include <stdint.h>
 #include "dungeon.h"
 
-// Dungeon constants (needed for array sizes)
-#define DUNGEON_WIDTH 100
-#define DUNGEON_HEIGHT 100
-
-// Remove the forward declaration for function parameters
-// struct Dungeon;
+// Forward declaration removed - using dungeon.h definitions
+// DUNGEON_WIDTH and DUNGEON_HEIGHT are defined in dungeon.h
 
 // Field of view radius
 #define FOV_RADIUS 8

@@ -1,0 +1,70 @@
+{
+  "_comment": "Adventure Game Configuration",
+  "_version": "1.0",
+  "_description": {
+    "purpose": "Centralized configuration for all game parameters",
+    "validation": "All values are validated against reasonable ranges",
+    "derived_values": "Some values are automatically calculated (grid_size, grid dimensions, etc.)"
+  },
+
+  "ecs": {
+    "_comment": "Entity Component System configuration",
+    "max_entities": 1000,
+    "max_components": 32,
+    "max_systems": 32,
+    "initial_component_capacity": 16
+  },
+
+  "dungeon": {
+    "_comment": "Dungeon generation parameters",
+    "width": 100,
+    "height": 100,
+    "max_rooms": 20,
+    "min_room_size": 5,
+    "max_room_size": 15
+  },
+
+  "render": {
+    "_comment": "Rendering and display configuration",
+    "cell_size": 16,
+    "sidebar_width": 12,
+    "game_area_width": 48,
+    "game_area_height": 30,
+    "status_line_height": 1,
+    "window_title": "Adventure Game"
+  },
+
+  "fov": {
+    "_comment": "Field of View configuration",
+    "radius": 8
+  },
+
+  "spatial": {
+    "_comment": "Spatial partitioning system configuration",
+    "cell_size": 10,
+    "max_entities_per_cell": 32
+  },
+
+  "inventory": {
+    "_comment": "Inventory system configuration",
+    "max_items": 40
+  },
+
+  "message": {
+    "_comment": "Message system configuration",
+    "queue_length": 100,
+    "max_text_length": 512,
+    "max_wrapped_lines": 20
+  },
+
+  "message_view": {
+    "_comment": "Message view window configuration",
+    "default_width": 400,
+    "default_height": 300,
+    "min_width": 200,
+    "min_height": 150,
+    "line_height": 18,
+    "margin": 10,
+    "scrollbar_width": 20
+  }
+} 

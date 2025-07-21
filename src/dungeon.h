@@ -6,11 +6,22 @@
 #include "baseds.h"
 #include "types.h"
 
-#define DUNGEON_WIDTH 100
-#define DUNGEON_HEIGHT 100
-#define MAX_ROOMS 20
-#define MIN_ROOM_SIZE 5
-#define MAX_ROOM_SIZE 15
+// Compile-time maximum limits (for array declarations)
+// Runtime limits are controlled by configuration system
+#define DUNGEON_WIDTH_COMPILE_TIME 500
+#define DUNGEON_HEIGHT_COMPILE_TIME 500
+
+// Backward compatibility defines (runtime uses config system)
+#define DUNGEON_WIDTH DUNGEON_WIDTH_COMPILE_TIME
+#define DUNGEON_HEIGHT DUNGEON_HEIGHT_COMPILE_TIME
+
+// Room generation limits (runtime configurable)
+#define MAX_ROOMS_COMPILE_TIME 100
+#define MAX_ROOMS MAX_ROOMS_COMPILE_TIME
+
+// Room size limits (use config system at runtime)
+#define MIN_ROOM_SIZE 3
+#define MAX_ROOM_SIZE 50
 
 typedef enum {
     TILE_TYPE_WALL,

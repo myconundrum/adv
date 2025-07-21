@@ -13,9 +13,16 @@
 // Forward declaration to avoid circular includes
 struct AppState;
 
-#define MAX_ENTITIES 1000
-#define MAX_COMPONENTS 32
-#define MAX_SYSTEMS 32
+// Compile-time maximum limits (for array declarations)
+// Runtime limits are controlled by configuration system
+#define MAX_ENTITIES_COMPILE_TIME 10000
+#define MAX_COMPONENTS_COMPILE_TIME 64
+#define MAX_SYSTEMS_COMPILE_TIME 64
+
+// Backward compatibility defines (use config system when possible)
+#define MAX_ENTITIES MAX_ENTITIES_COMPILE_TIME
+#define MAX_COMPONENTS MAX_COMPONENTS_COMPILE_TIME
+#define MAX_SYSTEMS MAX_SYSTEMS_COMPILE_TIME
 
 // System priorities for execution ordering
 typedef enum {

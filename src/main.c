@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "log.h"
+#include "config.h"
 #include "ecs.h"
 #include "components.h"
 #include "appstate.h"
@@ -42,6 +43,9 @@ static void cleanup_resources(void) {
     
     // Shutdown the appstate singleton
     appstate_shutdown();
+    
+    // Cleanup configuration system
+    config_cleanup();
 }
 
 // Initialize game systems
@@ -105,6 +109,17 @@ int main(int argc, char* argv[]) {
     log_init(log_config);
     
     LOG_INFO("Starting Adventure Game - ECS");
+    
+    // Initialize configuration system
+    if (!config_init()) {
+        LOG_FATAL("Failed to initialize configuration system");
+        return 1;
+    }
+    
+    // Load configuration from file
+    if (!config_load_from_file("adv_config.json")) {
+        LOG_WARN("Failed to load adv_config.json, using defaults");
+    }
     
     // Initialize appstate singleton
     if (!appstate_init()) {

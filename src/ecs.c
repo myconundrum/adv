@@ -6,6 +6,7 @@
 #include "log.h"
 #include "appstate.h"
 #include "components.h"
+#include "config.h"
 #include "error.h"
 
 // Hash table for component name lookups
@@ -614,7 +615,7 @@ Entity entity_create(void) {
 }
 
 void entity_destroy(Entity entity) {
-    if (entity >= MAX_ENTITIES || !entity_is_active(entity)) return;
+    if (entity >= config_get_max_entities() || !entity_is_active(entity)) return;
     
     // Clear all component flags for this entity
     g_ecs_state.components.component_active[entity] = 0;
@@ -627,7 +628,7 @@ void entity_destroy(Entity entity) {
 }
 
 bool entity_exists(Entity entity) {
-    return entity < MAX_ENTITIES && entity_is_active(entity);
+    return entity < config_get_max_entities() && entity_is_active(entity);
 }
 
 void *entity_get_component(Entity entity, uint32_t component_id) {
@@ -678,15 +679,15 @@ uint32_t component_get_id(const char *name) {
 bool component_add(Entity entity, uint32_t component_id, void *data) {
     VALIDATE_NOT_NULL_FALSE(data, "component data");
     
-    if (entity >= MAX_ENTITIES) {
-        ERROR_RETURN_FALSE(RESULT_ERROR_OUT_OF_BOUNDS, "Entity ID %u exceeds maximum %d", entity, MAX_ENTITIES);
+    if (entity >= config_get_max_entities()) {
+        ERROR_RETURN_FALSE(RESULT_ERROR_OUT_OF_BOUNDS, "Entity ID %u exceeds maximum %u", entity, config_get_max_entities());
     }
     
     if (!entity_is_active(entity)) {
         ERROR_RETURN_FALSE(RESULT_ERROR_ENTITY_INVALID, "Entity %u is not active", entity);
     }
     
-    if (component_id >= MAX_COMPONENTS || component_id >= g_ecs_state.components.component_count) {
+    if (component_id >= MAX_COMPONENTS_COMPILE_TIME || component_id >= g_ecs_state.components.component_count) {
         ERROR_RETURN_FALSE(RESULT_ERROR_COMPONENT_NOT_FOUND, "Component ID %u is invalid (max: %u)", component_id, g_ecs_state.components.component_count);
     }
     
