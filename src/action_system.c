@@ -64,7 +64,12 @@ void action_move_entity(Entity entity, Direction direction, World *world) {
         // Update entity position
         position->x = new_x;
         position->y = new_y;
-        position->moved = true;
+        
+        // Mark entity as moved using flags in BaseInfo
+        BaseInfo *base_info = (BaseInfo *)entity_get_component(entity, component_get_id("BaseInfo"));
+        if (base_info) {
+            ENTITY_SET_FLAG(base_info->flags, ENTITY_FLAG_MOVED);
+        }
         
         // Place entity at new tile position
         dungeon_place_entity_at_position(&world->dungeon, entity, new_x, new_y);
@@ -72,20 +77,20 @@ void action_move_entity(Entity entity, Direction direction, World *world) {
         // Check if the new position has any entities
         Entity actor_at_pos, item_at_pos;
         if (dungeon_get_entities_at_position(&world->dungeon, new_x, new_y, &actor_at_pos, &item_at_pos)) {
-            // Check if there's a carryable item at this position
-            if (item_at_pos != INVALID_ENTITY && item_at_pos != entity) {
-                BaseInfo *base_info = (BaseInfo *)entity_get_component(item_at_pos, component_get_id("BaseInfo"));
-                if (base_info && base_info->is_carryable) {
-                    LOG_INFO("Picked up item: %s", base_info->name);
-                    
-                    // Add message to message system
-                    char pickup_message[256];
-                    snprintf(pickup_message, sizeof(pickup_message), "You picked up: %s", base_info->name);
-                    messages_add(pickup_message);
-                    
-                    pickup_item(entity, item_at_pos);
-                }
+                    // Check if there's a carryable item at this position
+        if (item_at_pos != INVALID_ENTITY && item_at_pos != entity) {
+            BaseInfo *base_info = (BaseInfo *)entity_get_component(item_at_pos, component_get_id("BaseInfo"));
+            if (entity_is_carryable(item_at_pos)) {
+                LOG_INFO("Picked up item: %s", base_info->name);
+                
+                // Add message to message system
+                char pickup_message[256];
+                snprintf(pickup_message, sizeof(pickup_message), "You picked up: %s", base_info->name);
+                messages_add(pickup_message);
+                
+                pickup_item(entity, item_at_pos);
             }
+        }
         }
     } else {
         LOG_INFO("Cannot move to (%d, %d) - blocked", new_x, new_y);

@@ -206,22 +206,39 @@ Entity create_entity_from_template(const char* template_name) {
             cJSON* symbol_obj = cJSON_GetObjectItem(component_obj, "symbol");
             cJSON* color_obj = cJSON_GetObjectItem(component_obj, "color");
             cJSON* name_obj = cJSON_GetObjectItem(component_obj, "name");
+            cJSON* description_obj = cJSON_GetObjectItem(component_obj, "description");
+            cJSON* weight_obj = cJSON_GetObjectItem(component_obj, "weight");
+            cJSON* volume_obj = cJSON_GetObjectItem(component_obj, "volume");
+            
+            // Handle legacy and new flag fields
+            cJSON* flags_obj = cJSON_GetObjectItem(component_obj, "flags");
             cJSON* is_carryable_obj = cJSON_GetObjectItem(component_obj, "is_carryable");
             
             base_info->character = symbol_obj ? symbol_obj->valuestring[0] : '?';
             base_info->color = color_obj ? color_obj->valueint : 0;
             strncpy(base_info->name, name_obj ? name_obj->valuestring : "Unknown", sizeof(base_info->name) - 1);
             base_info->name[sizeof(base_info->name) - 1] = '\0';
-            base_info->is_carryable = is_carryable_obj ? is_carryable_obj->valueint : 0;
+            strncpy(base_info->description, description_obj ? description_obj->valuestring : "", sizeof(base_info->description) - 1);
+            base_info->description[sizeof(base_info->description) - 1] = '\0';
+            base_info->weight = weight_obj ? weight_obj->valueint : 1;
+            base_info->volume = volume_obj ? volume_obj->valueint : 1;
+            
+            // Initialize flags
+            base_info->flags = flags_obj ? flags_obj->valueint : 0;
+            
+            // Handle legacy is_carryable field for backward compatibility
+            if (is_carryable_obj && is_carryable_obj->valueint) {
+                ENTITY_SET_FLAG(base_info->flags, ENTITY_FLAG_CARRYABLE);
+            }
+            
             component_data = base_info;
         }
         else if (strcmp_ci(component_type, "Actor") == 0) {
             Actor* actor = malloc(sizeof(Actor));
-            cJSON* is_player_obj = cJSON_GetObjectItem(component_obj, "is_player");
-            cJSON* can_carry_obj = cJSON_GetObjectItem(component_obj, "can_carry");
             cJSON* energy_obj = cJSON_GetObjectItem(component_obj, "energy");
             cJSON* energy_per_turn_obj = cJSON_GetObjectItem(component_obj, "energy_per_turn");
             cJSON* hp_obj = cJSON_GetObjectItem(component_obj, "hp");
+            cJSON* max_hp_obj = cJSON_GetObjectItem(component_obj, "max_hp");
             cJSON* strength_obj = cJSON_GetObjectItem(component_obj, "strength");
             cJSON* attack_obj = cJSON_GetObjectItem(component_obj, "attack");
             cJSON* attack_bonus_obj = cJSON_GetObjectItem(component_obj, "attack_bonus");
@@ -231,11 +248,10 @@ Entity create_entity_from_template(const char* template_name) {
             cJSON* damage_sides_obj = cJSON_GetObjectItem(component_obj, "damage_sides");
             cJSON* damage_bonus_obj = cJSON_GetObjectItem(component_obj, "damage_bonus");
             
-            actor->is_player = is_player_obj ? is_player_obj->valueint : 0;
-            actor->can_carry = can_carry_obj ? can_carry_obj->valueint : 0;
             actor->energy = energy_obj ? energy_obj->valueint : 100;
             actor->energy_per_turn = energy_per_turn_obj ? energy_per_turn_obj->valueint : 10;
             actor->hp = hp_obj ? hp_obj->valueint : 100;
+            actor->max_hp = max_hp_obj ? max_hp_obj->valueint : actor->hp;
             actor->strength = strength_obj ? strength_obj->valueint : 10;
             actor->attack = attack_obj ? attack_obj->valueint : 5;
             actor->attack_bonus = attack_bonus_obj ? attack_bonus_obj->valueint : 0;
@@ -244,7 +260,11 @@ Entity create_entity_from_template(const char* template_name) {
             actor->damage_dice = damage_dice_obj ? damage_dice_obj->valueint : 1;
             actor->damage_sides = damage_sides_obj ? damage_sides_obj->valueint : 6;
             actor->damage_bonus = damage_bonus_obj ? damage_bonus_obj->valueint : 0;
+            
             component_data = actor;
+            
+            // Handle legacy flags by setting them in BaseInfo if this entity has one
+            // Note: This will be handled in a post-processing step after all components are added
         }
         else if (strcmp_ci(component_type, "Action") == 0) {
             Action* action = malloc(sizeof(Action));
@@ -259,6 +279,34 @@ Entity create_entity_from_template(const char* template_name) {
             if (!component_add(entity, component_id, component_data)) {
                 LOG_ERROR("Failed to add component '%s' to entity from template '%s'", component_type, template_name);
                 free(component_data);
+            } else {
+                free(component_data); // Component data has been copied, free the temporary allocation
+            }
+        }
+    }
+
+    // Post-processing: Handle legacy Actor flags by setting them in BaseInfo
+    BaseInfo *base_info = (BaseInfo *)entity_get_component(entity, component_get_id("BaseInfo"));
+    if (base_info) {
+        // Check for legacy is_player and can_carry flags in the original JSON
+        for (int i = 0; i < component_count; i++) {
+            cJSON* component_obj = cJSON_GetArrayItem(components, i);
+            if (!cJSON_IsObject(component_obj)) continue;
+            
+            cJSON* type_obj = cJSON_GetObjectItem(component_obj, "type");
+            if (!type_obj || !cJSON_IsString(type_obj)) continue;
+            
+            if (strcmp_ci(type_obj->valuestring, "Actor") == 0) {
+                cJSON* is_player_obj = cJSON_GetObjectItem(component_obj, "is_player");
+                cJSON* can_carry_obj = cJSON_GetObjectItem(component_obj, "can_carry");
+                
+                if (is_player_obj && is_player_obj->valueint) {
+                    ENTITY_SET_FLAG(base_info->flags, ENTITY_FLAG_PLAYER);
+                }
+                if (can_carry_obj && can_carry_obj->valueint) {
+                    ENTITY_SET_FLAG(base_info->flags, ENTITY_FLAG_CAN_CARRY);
+                }
+                break;
             }
         }
     }

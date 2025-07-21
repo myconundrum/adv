@@ -2,6 +2,86 @@
 
 A C-based adventure game using Entity Component System (ECS) architecture with SDL2 for rendering and a flexible template system for entity creation.
 
+## Enhanced Component System
+
+### BaseInfo Component Enhancements
+
+The `BaseInfo` component has been significantly enhanced to serve as a centralized repository for commonly used entity properties:
+
+#### New Fields Added:
+- **`flags`** - 32-bit bitfield for entity properties (replaces individual boolean flags)
+- **`weight`** - Weight of the entity (for inventory management)
+- **`volume`** - Volume of the entity (for inventory management)  
+- **`description`** - Detailed description of the entity (128 characters)
+
+#### Consolidated Flags System
+
+Previously scattered boolean flags have been consolidated into a centralized flags bitfield:
+
+```c
+typedef enum {
+    ENTITY_FLAG_CARRYABLE = 1 << 0,    // Can this entity be picked up?
+    ENTITY_FLAG_PLAYER = 1 << 1,       // Is this entity the player?
+    ENTITY_FLAG_CAN_CARRY = 1 << 2,    // Can this entity carry items?
+    ENTITY_FLAG_MOVED = 1 << 3,        // Has this entity moved this turn?
+    ENTITY_FLAG_ALIVE = 1 << 4,        // Is this entity alive?
+    ENTITY_FLAG_HOSTILE = 1 << 5,      // Is this entity hostile?
+    ENTITY_FLAG_BLOCKING = 1 << 6,     // Does this entity block movement?
+    ENTITY_FLAG_VISIBLE = 1 << 7,      // Is this entity visible?
+    // Room for 24 more flags in a 32-bit field
+} EntityFlags;
+```
+
+#### Flag Manipulation Macros
+
+```c
+#define ENTITY_HAS_FLAG(entity_flags, flag) ((entity_flags) & (flag))
+#define ENTITY_SET_FLAG(entity_flags, flag) ((entity_flags) |= (flag))
+#define ENTITY_CLEAR_FLAG(entity_flags, flag) ((entity_flags) &= ~(flag))
+#define ENTITY_TOGGLE_FLAG(entity_flags, flag) ((entity_flags) ^= (flag))
+```
+
+#### Convenience Functions
+
+```c
+bool entity_is_player(Entity entity);
+bool entity_can_carry(Entity entity);
+bool entity_is_carryable(Entity entity);
+bool entity_has_moved(Entity entity);
+void entity_clear_moved_flag(Entity entity);
+```
+
+#### Usage Examples
+
+```c
+// Check if an entity can be picked up
+if (entity_is_carryable(item_entity)) {
+    pickup_item(player, item_entity);
+}
+
+// Set an entity as carryable using direct flag manipulation
+BaseInfo *info = (BaseInfo *)entity_get_component(entity, component_get_id("BaseInfo"));
+ENTITY_SET_FLAG(info->flags, ENTITY_FLAG_CARRYABLE);
+
+// Mark an entity as having moved
+BaseInfo *info = (BaseInfo *)entity_get_component(entity, component_get_id("BaseInfo"));
+ENTITY_SET_FLAG(info->flags, ENTITY_FLAG_MOVED);
+```
+
+#### Legacy Compatibility
+
+The template system maintains backward compatibility with legacy JSON formats:
+- Legacy `is_carryable`, `is_player`, and `can_carry` fields are automatically converted to the new flags system
+- New templates can use either the legacy format or the new `flags` field directly
+
+#### Benefits
+
+1. **Centralized Properties**: Common entity properties are now in one place
+2. **Memory Efficient**: 32-bit flags field can store 32 boolean properties
+3. **Extensible**: Easy to add new flags without changing the component structure
+4. **Performance**: Bitwise operations are faster than multiple boolean checks
+5. **Backward Compatible**: Existing JSON templates continue to work
+
 ## Features
 
 - **ECS Architecture**: Clean separation of data and logic
