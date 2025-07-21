@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include "log.h"
 #include "config.h"
+#include "mempool.h"
 #include "ecs.h"
 #include "components.h"
 #include "appstate.h"
@@ -43,6 +44,11 @@ static void cleanup_resources(void) {
     
     // Shutdown the appstate singleton
     appstate_shutdown();
+    
+    // Cleanup memory pool system
+    if (mempool_is_initialized()) {
+        mempool_cleanup();
+    }
     
     // Cleanup configuration system
     config_cleanup();
@@ -121,6 +127,23 @@ int main(int argc, char* argv[]) {
         LOG_WARN("Failed to load adv_config.json, using defaults");
     }
     
+    // Initialize memory pool system
+    const GameConfig *config = config_get();
+    if (config->mempool.enable_pool_allocation) {
+        mempool_set_chunk_count(config->mempool.initial_chunks_per_pool, 
+                               config->mempool.max_chunks_per_pool);
+        mempool_enable_corruption_detection(config->mempool.enable_corruption_detection);
+        mempool_enable_statistics(config->mempool.enable_statistics);
+        
+        if (!mempool_init()) {
+            LOG_FATAL("Failed to initialize memory pool");
+            return 1;
+        }
+        LOG_INFO("Memory pool system initialized");
+    } else {
+        LOG_INFO("Memory pool allocation disabled by configuration");
+    }
+    
     // Initialize appstate singleton
     if (!appstate_init()) {
         LOG_FATAL("Failed to initialize AppState");
@@ -148,6 +171,9 @@ int main(int argc, char* argv[]) {
     
     // Initialize the state manager with initial state
     game_state_manager_init(state_manager);
+    
+    // Initialize memory pool
+    mempool_init();
     
     // Timing variables for delta time
     Uint32 last_time = SDL_GetTicks();

@@ -66,5 +66,14 @@
     "line_height": 18,
     "margin": 10,
     "scrollbar_width": 20
+  },
+
+  "mempool": {
+    "_comment": "Memory pool allocator configuration - much more generous limits",
+    "initial_chunks_per_pool": 2,
+    "max_chunks_per_pool": 1000,
+    "enable_corruption_detection": true,
+    "enable_statistics": true,
+    "enable_pool_allocation": true
   }
 } 

@@ -59,6 +59,13 @@ static const GameConfig DEFAULT_CONFIG = {
         .margin = 10,
         .scrollbar_width = 20
     },
+    .mempool = {
+        .initial_chunks_per_pool = 1,
+        .max_chunks_per_pool = 64,
+        .enable_corruption_detection = true,
+        .enable_statistics = true,
+        .enable_pool_allocation = true
+    },
     .loaded = false,
     .config_file_path = ""
 };
@@ -129,6 +136,17 @@ static bool json_get_string(const cJSON *json, const char *key, char *buffer, si
     }
     
     strcpy(buffer, str);
+    return true;
+}
+
+// Helper function to safely get boolean from JSON
+static bool json_get_bool(const cJSON *json, const char *key, bool *value) {
+    const cJSON *item = cJSON_GetObjectItemCaseSensitive(json, key);
+    if (!cJSON_IsBool(item)) {
+        return false;
+    }
+    
+    *value = cJSON_IsTrue(item);
     return true;
 }
 
@@ -235,6 +253,16 @@ static bool load_remaining_configs(const cJSON *json) {
         json_get_uint32(msg_view_json, "line_height", &g_config.message_view.line_height);
         json_get_uint32(msg_view_json, "margin", &g_config.message_view.margin);
         json_get_uint32(msg_view_json, "scrollbar_width", &g_config.message_view.scrollbar_width);
+    }
+    
+    // Memory Pool
+    const cJSON *mempool_json = cJSON_GetObjectItemCaseSensitive(json, "mempool");
+    if (cJSON_IsObject(mempool_json)) {
+        json_get_uint32(mempool_json, "initial_chunks_per_pool", &g_config.mempool.initial_chunks_per_pool);
+        json_get_uint32(mempool_json, "max_chunks_per_pool", &g_config.mempool.max_chunks_per_pool);
+        json_get_bool(mempool_json, "enable_corruption_detection", &g_config.mempool.enable_corruption_detection);
+        json_get_bool(mempool_json, "enable_statistics", &g_config.mempool.enable_statistics);
+        json_get_bool(mempool_json, "enable_pool_allocation", &g_config.mempool.enable_pool_allocation);
     }
     
     return true;

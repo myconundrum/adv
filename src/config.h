@@ -61,6 +61,14 @@ typedef struct {
     uint32_t scrollbar_width;
 } MessageViewConfig;
 
+typedef struct {
+    uint32_t initial_chunks_per_pool;
+    uint32_t max_chunks_per_pool;
+    bool enable_corruption_detection;
+    bool enable_statistics;
+    bool enable_pool_allocation;     // Global enable/disable for pool allocation
+} MemoryPoolConfig;
+
 // Main configuration structure
 typedef struct {
     ECSConfig ecs;
@@ -71,6 +79,7 @@ typedef struct {
     InventoryConfig inventory;
     MessageConfig message;
     MessageViewConfig message_view;
+    MemoryPoolConfig mempool;
     
     // Metadata
     bool loaded;

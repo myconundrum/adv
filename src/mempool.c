@@ -1,0 +1,543 @@
+#include "mempool.h"
+#include "log.h"
+#include "error.h"
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+
+// Global memory pool instance
+static MemoryPool g_mempool = {0};
+
+// Size class configurations (size in bytes, blocks per chunk)
+static const struct {
+    uint32_t size;
+    uint32_t blocks_per_chunk;
+} SIZE_CLASS_CONFIG[POOL_SIZE_COUNT] = {
+    {16,   512},  // POOL_SIZE_16:   8KB chunks (more for frequent small allocs)
+    {32,   256},  // POOL_SIZE_32:   8KB chunks (more for frequent small allocs)  
+    {64,   256},  // POOL_SIZE_64:   16KB chunks (much more for linked list nodes)
+    {128,  128},  // POOL_SIZE_128:  16KB chunks (more for medium allocs)
+    {256,  64},   // POOL_SIZE_256:  16KB chunks (more reasonable)
+    {512,  32},   // POOL_SIZE_512:  16KB chunks
+    {1024, 16},   // POOL_SIZE_1024: 16KB chunks
+    {2048, 8},    // POOL_SIZE_2048: 16KB chunks
+};
+
+// Forward declarations
+static bool allocate_new_chunk(PoolSizeClass class);
+static PoolBlock* get_block_from_pool(PoolSizeClass class);
+static void return_block_to_pool(PoolBlock *block);
+static bool is_valid_pool_pointer(void *ptr);
+static void update_statistics(PoolSizeClass class, bool allocating);
+
+// Get the appropriate size class for a given size
+PoolSizeClass mempool_get_size_class(size_t size) {
+    // Add space for the block header
+    size += sizeof(PoolBlock);
+    
+    if (size <= 16) return POOL_SIZE_16;
+    if (size <= 32) return POOL_SIZE_32;
+    if (size <= 64) return POOL_SIZE_64;
+    if (size <= 128) return POOL_SIZE_128;
+    if (size <= 256) return POOL_SIZE_256;
+    if (size <= 512) return POOL_SIZE_512;
+    if (size <= 1024) return POOL_SIZE_1024;
+    if (size <= 2048) return POOL_SIZE_2048;
+    
+    return POOL_SIZE_COUNT; // Too large for pool allocation
+}
+
+// Get the actual size for a size class
+size_t mempool_get_class_size(PoolSizeClass class) {
+    if (class >= POOL_SIZE_COUNT) return 0;
+    return SIZE_CLASS_CONFIG[class].size;
+}
+
+// Initialize the memory pool system
+bool mempool_init(void) {
+    if (g_mempool.initialized) {
+        LOG_WARN("Memory pool already initialized");
+        return true;
+    }
+    
+    memset(&g_mempool, 0, sizeof(MemoryPool));
+    
+    // Set default configuration
+    g_mempool.initial_chunks_per_pool = 1;
+    g_mempool.max_chunks_per_pool = 64;
+    g_mempool.enable_corruption_detection = true;
+    g_mempool.enable_statistics = true;
+    
+    // Initialize each pool size class
+    for (int i = 0; i < POOL_SIZE_COUNT; i++) {
+        PoolSizeInfo *pool = &g_mempool.pools[i];
+        pool->block_size = SIZE_CLASS_CONFIG[i].size;
+        pool->blocks_per_chunk = SIZE_CLASS_CONFIG[i].blocks_per_chunk;
+        pool->free_list = NULL;
+        pool->chunks = NULL;
+        pool->total_blocks = 0;
+        pool->used_blocks = 0;
+        pool->peak_used = 0;
+        pool->chunk_count = 0;
+        
+        // Allocate initial chunk for each size class
+        if (!allocate_new_chunk((PoolSizeClass)i)) {
+            LOG_ERROR("Failed to allocate initial chunk for size class %d", i);
+            mempool_cleanup();
+            return false;
+        }
+    }
+    
+    g_mempool.initialized = true;
+    LOG_INFO("Memory pool initialized with %d size classes", POOL_SIZE_COUNT);
+    return true;
+}
+
+// Cleanup the memory pool system
+void mempool_cleanup(void) {
+    if (!g_mempool.initialized) {
+        return;
+    }
+    
+    // Print final statistics
+    if (g_mempool.enable_statistics) {
+        mempool_print_stats();
+    }
+    
+    // Free all chunks
+    for (int i = 0; i < POOL_SIZE_COUNT; i++) {
+        PoolSizeInfo *pool = &g_mempool.pools[i];
+        PoolChunk *chunk = pool->chunks;
+        
+        while (chunk) {
+            PoolChunk *next = chunk->next;
+            free(chunk->memory);
+            free(chunk);
+            chunk = next;
+        }
+    }
+    
+    memset(&g_mempool, 0, sizeof(MemoryPool));
+    LOG_INFO("Memory pool cleaned up");
+}
+
+// Check if memory pool is initialized
+bool mempool_is_initialized(void) {
+    return g_mempool.initialized;
+}
+
+// Allocate a new chunk for a specific size class
+static bool allocate_new_chunk(PoolSizeClass class) {
+    if (class >= POOL_SIZE_COUNT) return false;
+    
+    PoolSizeInfo *pool = &g_mempool.pools[class];
+    
+    // Check if we've hit the maximum chunk limit
+    if (pool->chunk_count >= g_mempool.max_chunks_per_pool) {
+        LOG_DEBUG("Hit maximum chunk limit for size class %d (%u chunks), allowing fallback", 
+                  class, pool->chunk_count);
+        return false;
+    }
+    
+    // Calculate chunk size
+    uint32_t block_size = pool->block_size;
+    uint32_t block_count = pool->blocks_per_chunk;
+    size_t chunk_size = block_size * block_count;
+    
+    // Allocate memory for the chunk descriptor
+    PoolChunk *chunk = malloc(sizeof(PoolChunk));
+    if (!chunk) {
+        LOG_ERROR("Failed to allocate chunk descriptor");
+        return false;
+    }
+    
+    // Allocate the actual memory
+    chunk->memory = malloc(chunk_size);
+    if (!chunk->memory) {
+        LOG_ERROR("Failed to allocate chunk memory (%zu bytes)", chunk_size);
+        free(chunk);
+        return false;
+    }
+    
+    // Initialize chunk
+    chunk->next = pool->chunks;
+    chunk->size_class = class;
+    chunk->size = chunk_size;
+    chunk->block_count = block_count;
+    chunk->used_blocks = 0;
+    
+    // Add chunk to the pool's chunk list
+    pool->chunks = chunk;
+    pool->chunk_count++;
+    pool->total_blocks += block_count;
+    
+    // Initialize free list for this chunk
+    uint8_t *memory = chunk->memory;
+    for (uint32_t i = 0; i < block_count; i++) {
+        PoolBlock *block = (PoolBlock*)(memory + i * block_size);
+        block->next = pool->free_list;
+        block->size_class = class;
+        block->magic = POOL_FREE_MAGIC;
+        pool->free_list = block;
+    }
+    
+    LOG_DEBUG("Allocated new chunk for size class %d: %u blocks, %zu bytes (chunk %u/%u)", 
+              class, block_count, chunk_size, pool->chunk_count, g_mempool.max_chunks_per_pool);
+    return true;
+}
+
+// Get a block from the specified pool
+static PoolBlock* get_block_from_pool(PoolSizeClass class) {
+    if (class >= POOL_SIZE_COUNT) return NULL;
+    
+    PoolSizeInfo *pool = &g_mempool.pools[class];
+    
+    // If no free blocks, try to allocate a new chunk
+    if (!pool->free_list) {
+        if (!allocate_new_chunk(class)) {
+            return NULL;
+        }
+    }
+    
+    // Get block from free list
+    PoolBlock *block = pool->free_list;
+    if (!block) return NULL;
+    
+    pool->free_list = block->next;
+    
+    // Update statistics
+    pool->used_blocks++;
+    if (pool->used_blocks > pool->peak_used) {
+        pool->peak_used = pool->used_blocks;
+    }
+    
+    // Find which chunk this block belongs to and update its usage
+    PoolChunk *chunk = pool->chunks;
+    while (chunk) {
+        uint8_t *chunk_start = chunk->memory;
+        uint8_t *chunk_end = chunk_start + chunk->size;
+        
+        if ((uint8_t*)block >= chunk_start && (uint8_t*)block < chunk_end) {
+            chunk->used_blocks++;
+            break;
+        }
+        chunk = chunk->next;
+    }
+    
+    // Set up block header
+    block->next = NULL;
+    block->size_class = class;
+    if (g_mempool.enable_corruption_detection) {
+        block->magic = POOL_BLOCK_MAGIC;
+    }
+    
+    return block;
+}
+
+// Return a block to its pool
+static void return_block_to_pool(PoolBlock *block) {
+    if (!block) return;
+    
+    PoolSizeClass class = block->size_class;
+    if (class >= POOL_SIZE_COUNT) {
+        LOG_ERROR("Invalid size class in block: %d", class);
+        return;
+    }
+    
+    // Corruption detection
+    if (g_mempool.enable_corruption_detection && block->magic != POOL_BLOCK_MAGIC) {
+        LOG_ERROR("Block corruption detected: expected magic 0x%08X, got 0x%08X", 
+                  POOL_BLOCK_MAGIC, block->magic);
+        return;
+    }
+    
+    PoolSizeInfo *pool = &g_mempool.pools[class];
+    
+    // Update statistics
+    pool->used_blocks--;
+    
+    // Find which chunk this block belongs to and update its usage
+    PoolChunk *chunk = pool->chunks;
+    while (chunk) {
+        uint8_t *chunk_start = chunk->memory;
+        uint8_t *chunk_end = chunk_start + chunk->size;
+        
+        if ((uint8_t*)block >= chunk_start && (uint8_t*)block < chunk_end) {
+            chunk->used_blocks--;
+            break;
+        }
+        chunk = chunk->next;
+    }
+    
+    // Add block back to free list
+    block->magic = POOL_FREE_MAGIC;
+    block->next = pool->free_list;
+    pool->free_list = block;
+}
+
+// Check if a pointer is from the pool
+static bool is_valid_pool_pointer(void *ptr) {
+    if (!ptr || !g_mempool.initialized) return false;
+    
+    PoolBlock *block = (PoolBlock*)((uint8_t*)ptr - sizeof(PoolBlock));
+    
+    // Check if this block is within any of our chunks
+    for (int i = 0; i < POOL_SIZE_COUNT; i++) {
+        PoolChunk *chunk = g_mempool.pools[i].chunks;
+        while (chunk) {
+            uint8_t *chunk_start = chunk->memory;
+            uint8_t *chunk_end = chunk_start + chunk->size;
+            
+            if ((uint8_t*)block >= chunk_start && (uint8_t*)block < chunk_end) {
+                return true;
+            }
+            chunk = chunk->next;
+        }
+    }
+    
+    return false;
+}
+
+// Update allocation statistics
+static void update_statistics(PoolSizeClass class, bool allocating) {
+    if (!g_mempool.enable_statistics) return;
+    
+    if (allocating) {
+        g_mempool.total_allocations++;
+        g_mempool.bytes_allocated += mempool_get_class_size(class);
+    } else {
+        g_mempool.total_deallocations++;
+        g_mempool.bytes_deallocated += mempool_get_class_size(class);
+    }
+    
+    // Update peak memory usage
+    size_t current_usage = mempool_get_total_memory_usage();
+    if (current_usage > g_mempool.peak_memory_usage) {
+        g_mempool.peak_memory_usage = current_usage;
+    }
+}
+
+// Core allocation function
+void* pool_malloc(size_t size) {
+    if (!g_mempool.initialized) {
+        LOG_DEBUG("Memory pool not initialized, falling back to malloc");
+        g_mempool.fallback_allocations++;
+        return malloc(size);
+    }
+    
+    if (size == 0) return NULL;
+    
+    PoolSizeClass class = mempool_get_size_class(size);
+    
+    // If size is too large for pool, fall back to malloc
+    if (class >= POOL_SIZE_COUNT) {
+        g_mempool.fallback_allocations++;
+        return malloc(size);
+    }
+    
+    PoolBlock *block = get_block_from_pool(class);
+    if (!block) {
+        LOG_DEBUG("Pool exhausted for size class %d, falling back to malloc (fallback #%u)", 
+                  class, g_mempool.fallback_allocations + 1);
+        g_mempool.fallback_allocations++;
+        return malloc(size);
+    }
+    
+    update_statistics(class, true);
+    
+    // Return pointer to user data (after the header)
+    return (uint8_t*)block + sizeof(PoolBlock);
+}
+
+// Core deallocation function
+void pool_free(void *ptr) {
+    if (!ptr) return;
+    
+    // Check if this pointer is from our pool
+    if (!is_valid_pool_pointer(ptr)) {
+        // Not from pool, use regular free
+        free(ptr);
+        return;
+    }
+    
+    // Get the block header
+    PoolBlock *block = (PoolBlock*)((uint8_t*)ptr - sizeof(PoolBlock));
+    
+    update_statistics(block->size_class, false);
+    return_block_to_pool(block);
+}
+
+// Calloc implementation
+void* pool_calloc(size_t count, size_t size) {
+    size_t total_size = count * size;
+    void *ptr = pool_malloc(total_size);
+    if (ptr) {
+        memset(ptr, 0, total_size);
+    }
+    return ptr;
+}
+
+// Realloc implementation
+void* pool_realloc(void *ptr, size_t new_size) {
+    if (!ptr) return pool_malloc(new_size);
+    if (new_size == 0) {
+        pool_free(ptr);
+        return NULL;
+    }
+    
+    // If not from pool, use regular realloc
+    if (!is_valid_pool_pointer(ptr)) {
+        return realloc(ptr, new_size);
+    }
+    
+    // Get old size class
+    PoolBlock *old_block = (PoolBlock*)((uint8_t*)ptr - sizeof(PoolBlock));
+    PoolSizeClass old_class = old_block->size_class;
+    PoolSizeClass new_class = mempool_get_size_class(new_size);
+    
+    // If same size class, no need to reallocate
+    if (new_class == old_class) {
+        return ptr;
+    }
+    
+    // Allocate new memory
+    void *new_ptr = pool_malloc(new_size);
+    if (!new_ptr) return NULL;
+    
+    // Copy old data
+    size_t old_size = mempool_get_class_size(old_class) - sizeof(PoolBlock);
+    size_t copy_size = (new_size < old_size) ? new_size : old_size;
+    memcpy(new_ptr, ptr, copy_size);
+    
+    // Free old memory
+    pool_free(ptr);
+    
+    return new_ptr;
+}
+
+// Expand a specific pool
+bool mempool_expand_pool(PoolSizeClass class) {
+    if (!g_mempool.initialized || class >= POOL_SIZE_COUNT) {
+        return false;
+    }
+    
+    return allocate_new_chunk(class);
+}
+
+// Print basic statistics
+void mempool_print_stats(void) {
+    if (!g_mempool.initialized) {
+        LOG_INFO("Memory pool not initialized");
+        return;
+    }
+    
+    LOG_INFO("=== Memory Pool Statistics ===");
+    LOG_INFO("Total allocations: %llu", (unsigned long long)g_mempool.total_allocations);
+    LOG_INFO("Total deallocations: %llu", (unsigned long long)g_mempool.total_deallocations);
+    LOG_INFO("Bytes allocated: %llu", (unsigned long long)g_mempool.bytes_allocated);
+    LOG_INFO("Bytes deallocated: %llu", (unsigned long long)g_mempool.bytes_deallocated);
+    LOG_INFO("Peak memory usage: %llu bytes", (unsigned long long)g_mempool.peak_memory_usage);
+    LOG_INFO("Fallback allocations: %u", g_mempool.fallback_allocations);
+    LOG_INFO("Current memory usage: %zu bytes", mempool_get_total_memory_usage());
+}
+
+// Print detailed statistics
+void mempool_print_detailed_stats(void) {
+    mempool_print_stats();
+    
+    LOG_INFO("=== Per-Size-Class Statistics ===");
+    for (int i = 0; i < POOL_SIZE_COUNT; i++) {
+        PoolSizeInfo *pool = &g_mempool.pools[i];
+        LOG_INFO("Size class %d (%u bytes): %u/%u blocks used, %u chunks, peak: %u",
+                 i, pool->block_size, pool->used_blocks, pool->total_blocks,
+                 pool->chunk_count, pool->peak_used);
+    }
+}
+
+// Get total memory usage
+size_t mempool_get_total_memory_usage(void) {
+    if (!g_mempool.initialized) return 0;
+    
+    size_t total = 0;
+    for (int i = 0; i < POOL_SIZE_COUNT; i++) {
+        PoolSizeInfo *pool = &g_mempool.pools[i];
+        total += pool->used_blocks * pool->block_size;
+    }
+    return total;
+}
+
+// Get free memory
+size_t mempool_get_free_memory(void) {
+    if (!g_mempool.initialized) return 0;
+    
+    size_t total = 0;
+    for (int i = 0; i < POOL_SIZE_COUNT; i++) {
+        PoolSizeInfo *pool = &g_mempool.pools[i];
+        total += (pool->total_blocks - pool->used_blocks) * pool->block_size;
+    }
+    return total;
+}
+
+// Validate pool integrity
+bool mempool_validate_integrity(void) {
+    if (!g_mempool.initialized) return false;
+    
+    bool valid = true;
+    
+    for (int i = 0; i < POOL_SIZE_COUNT; i++) {
+        PoolSizeInfo *pool = &g_mempool.pools[i];
+        
+        // Check that used_blocks doesn't exceed total_blocks
+        if (pool->used_blocks > pool->total_blocks) {
+            LOG_ERROR("Pool %d: used_blocks (%u) > total_blocks (%u)", 
+                      i, pool->used_blocks, pool->total_blocks);
+            valid = false;
+        }
+        
+        // Validate free list if corruption detection is enabled
+        if (g_mempool.enable_corruption_detection) {
+            PoolBlock *block = pool->free_list;
+            uint32_t free_count = 0;
+            
+            while (block && free_count < pool->total_blocks) {
+                if (block->magic != POOL_FREE_MAGIC) {
+                    LOG_ERROR("Pool %d: free block has invalid magic: 0x%08X", 
+                              i, block->magic);
+                    valid = false;
+                    break;
+                }
+                
+                if (block->size_class != (PoolSizeClass)i) {
+                    LOG_ERROR("Pool %d: free block has wrong size class: %d", 
+                              i, block->size_class);
+                    valid = false;
+                    break;
+                }
+                
+                block = block->next;
+                free_count++;
+            }
+        }
+    }
+    
+    return valid;
+}
+
+// Configuration functions
+void mempool_set_chunk_count(uint32_t initial_chunks, uint32_t max_chunks) {
+    if (g_mempool.initialized) {
+        LOG_WARN("Cannot change chunk count after initialization");
+        return;
+    }
+    
+    g_mempool.initial_chunks_per_pool = initial_chunks;
+    g_mempool.max_chunks_per_pool = max_chunks;
+}
+
+void mempool_enable_corruption_detection(bool enable) {
+    g_mempool.enable_corruption_detection = enable;
+}
+
+void mempool_enable_statistics(bool enable) {
+    g_mempool.enable_statistics = enable;
+} 

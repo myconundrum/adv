@@ -7,6 +7,7 @@
 #include "appstate.h"
 #include "components.h"
 #include "config.h"
+#include "mempool.h"
 #include "error.h"
 
 // Hash table for component name lookups
@@ -44,7 +45,7 @@ static void component_hash_table_init(ComponentHashTable *table) {
 static void component_hash_table_add(ComponentHashTable *table, const char *name, uint32_t component_id) {
     uint32_t bucket = hash_component_name(name);
     
-    ComponentHashEntry *entry = malloc(sizeof(ComponentHashEntry));
+    ComponentHashEntry *entry = pool_malloc(sizeof(ComponentHashEntry));
     if (!entry) {
         LOG_ERROR("Failed to allocate memory for hash table entry");
         return;
@@ -78,7 +79,7 @@ static void component_hash_table_cleanup(ComponentHashTable *table) {
         ComponentHashEntry *entry = table->buckets[i];
         while (entry != NULL) {
             ComponentHashEntry *next = entry->next;
-            free(entry);
+            pool_free(entry);
             entry = next;
         }
         table->buckets[i] = NULL;

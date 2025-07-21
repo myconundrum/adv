@@ -1,4 +1,5 @@
 #include "baseds.h"
+#include "mempool.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -11,7 +12,7 @@ void ll_init(ll_list *list, size_t data_size) {
 }
 
 void ll_push(ll_list *list, void *data) {
-    ll_node *new_node = (ll_node *)malloc(sizeof(ll_node) + list->data_size);
+    ll_node *new_node = (ll_node *)pool_malloc(sizeof(ll_node) + list->data_size);
     new_node->data = (char*)new_node + sizeof(ll_node);
     memcpy(new_node->data, data, list->data_size);
     new_node->next = NULL;
@@ -27,7 +28,7 @@ void ll_push(ll_list *list, void *data) {
 }
 
 void ll_push_front(ll_list *list, void *data) {
-    ll_node *new_node = (ll_node *)malloc(sizeof(ll_node) + list->data_size);
+    ll_node *new_node = (ll_node *)pool_malloc(sizeof(ll_node) + list->data_size);
     new_node->data = (char*)new_node + sizeof(ll_node);
     memcpy(new_node->data, data, list->data_size);
     new_node->next = list->head;
@@ -48,7 +49,7 @@ void ll_pop(ll_list *list) {
     if (list->head == NULL) {
         list->tail = NULL;
     }
-    free(node);
+    pool_free(node);
     list->size--;
 }
 
@@ -61,7 +62,7 @@ void ll_pop_front(ll_list *list) {
     if (list->head == NULL) {
         list->tail = NULL;
     }
-    free(node);
+    pool_free(node);
     list->size--;
 }
 
@@ -111,7 +112,7 @@ void ll_remove(ll_list *list, size_t index) {
         list->tail = current->prev;
     }
     
-    free(current);
+    pool_free(current);
     list->size--;
 }
 
@@ -156,7 +157,7 @@ void ll_list_destroy(ll_list *list) {
     ll_node *current = list->head;
     while (current != NULL) {
         ll_node *next = current->next;
-        free(current);
+        pool_free(current);
         current = next;
     }
     
