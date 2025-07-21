@@ -217,6 +217,7 @@ Entity create_entity_from_template(const char* template_name) {
             cJSON* y_obj = cJSON_GetObjectItem(component_obj, "y");
             pos->x = x_obj ? x_obj->valuedouble : 0.0f;
             pos->y = y_obj ? y_obj->valuedouble : 0.0f;
+            pos->entity = INVALID_ENTITY; // Initialize to indicate entity is on map, not in inventory
             component_data = pos;
         }
         else if (strcmp_ci(component_type, "BaseInfo") == 0) {
