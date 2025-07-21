@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "ecs.h"
+#include "components.h"
 
 // Tile information lookup table
 static TileInfo tile_info_table[TILE_TYPE_COUNT];
@@ -111,6 +113,8 @@ void dungeon_init(Dungeon *dungeon) {
             dungeon->tiles[x][y].y = y;
             dungeon->tiles[x][y].type = TILE_TYPE_WALL;
             dungeon->tiles[x][y].explored = false;
+            dungeon->tiles[x][y].actor = INVALID_ENTITY;
+            dungeon->tiles[x][y].item = INVALID_ENTITY;
         }
     }
     
@@ -237,16 +241,61 @@ bool dungeon_is_walkable(Dungeon *dungeon, int x, int y) {
 
 // Check if a position has been explored
 bool dungeon_is_explored(Dungeon *dungeon, int x, int y) {
-    if (!dungeon || x < 0 || x >= DUNGEON_WIDTH || y < 0 || y >= DUNGEON_HEIGHT) {
-        return false;
-    }
-    return dungeon->tiles[x][y].explored;
+    Tile *tile = dungeon_get_tile(dungeon, x, y);
+    return tile ? tile->explored : false;
 }
 
 // Mark a position as explored
 void dungeon_mark_explored(Dungeon *dungeon, int x, int y) {
-    if (!dungeon || x < 0 || x >= DUNGEON_WIDTH || y < 0 || y >= DUNGEON_HEIGHT) {
+    Tile *tile = dungeon_get_tile(dungeon, x, y);
+    if (tile) {
+        tile->explored = true;
+    }
+}
+
+// Tile-based entity management functions
+void dungeon_place_entity_at_position(Dungeon *dungeon, Entity entity, int x, int y) {
+    Tile *tile = dungeon_get_tile(dungeon, x, y);
+    if (!tile || entity == INVALID_ENTITY) {
         return;
     }
-    dungeon->tiles[x][y].explored = true;
+    
+    // Check if entity has Actor component to determine where to place it
+    Actor *actor = (Actor *)entity_get_component(entity, component_get_id("Actor"));
+    if (actor) {
+        // It's an actor, place in actor slot
+        tile->actor = entity;
+    } else {
+        // It's an item, place in item slot
+        tile->item = entity;
+    }
+}
+
+void dungeon_remove_entity_from_position(Dungeon *dungeon, Entity entity, int x, int y) {
+    Tile *tile = dungeon_get_tile(dungeon, x, y);
+    if (!tile || entity == INVALID_ENTITY) {
+        return;
+    }
+    
+    // Remove entity from appropriate slot
+    if (tile->actor == entity) {
+        tile->actor = INVALID_ENTITY;
+    }
+    if (tile->item == entity) {
+        tile->item = INVALID_ENTITY;
+    }
+}
+
+bool dungeon_get_entities_at_position(Dungeon *dungeon, int x, int y, Entity *actor_out, Entity *item_out) {
+    Tile *tile = dungeon_get_tile(dungeon, x, y);
+    if (!tile) {
+        if (actor_out) *actor_out = INVALID_ENTITY;
+        if (item_out) *item_out = INVALID_ENTITY;
+        return false;
+    }
+    
+    if (actor_out) *actor_out = tile->actor;
+    if (item_out) *item_out = tile->item;
+    
+    return (tile->actor != INVALID_ENTITY || tile->item != INVALID_ENTITY);
 }

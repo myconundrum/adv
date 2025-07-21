@@ -104,6 +104,28 @@
           "is_carryable": 1
         }
       ]
+    },
+    {
+      "name": "stack of items",
+      "components": [
+        {
+          "type": "Position",
+          "x": 0.0,
+          "y": 0.0
+        },
+        {
+          "type": "BaseInfo",
+          "symbol": "%",
+          "color": 6,
+          "name": "stack of items",
+          "is_carryable": 1
+        },
+        {
+          "type": "Inventory",
+          "max_items": 10,
+          "current_items": 0
+        }
+      ]
     }
   ]
 } 

@@ -3,7 +3,6 @@
 #include "render_system.h"
 #include "log.h"
 #include "dungeon.h"
-#include "entitycache_system.h"
 #include "components.h"
 #include <stdio.h>
 
@@ -14,16 +13,17 @@ void pickup_item(Entity entity, Entity item) {
         inventory->items[inventory->item_count++] = item;
     }
 
-    // remove the item from the new position
+    // remove the item from the tile
     Position *position_item = (Position *)entity_get_component(item, component_get_id("Position"));
     if (position_item) {
+        // Remove item from its current tile position
+        dungeon_remove_entity_from_position(&g_world->dungeon, item, position_item->x, position_item->y);
+        
+        // Mark item as carried
         position_item->x = -1;
         position_item->y = -1;
         position_item->entity = entity;
     }
-
-    // remove the item from the entity cache, since it's no longer on the ground.
-    entitycache_remove_entity(item);
 }
 
 void action_move_entity(Entity entity, Direction direction, World *world) {
@@ -32,6 +32,8 @@ void action_move_entity(Entity entity, Direction direction, World *world) {
         return;
     }
 
+    int old_x = position->x;
+    int old_y = position->y;
     int new_x = position->x;
     int new_y = position->y;
 
@@ -55,25 +57,29 @@ void action_move_entity(Entity entity, Direction direction, World *world) {
 
     // Check if the new position is walkable
     if (dungeon_is_walkable(&world->dungeon, new_x, new_y)) {
+        // Remove entity from old tile position
+        dungeon_remove_entity_from_position(&world->dungeon, entity, old_x, old_y);
+        
+        // Update entity position
         position->x = new_x;
         position->y = new_y;
         position->moved = true;
         
-        // check if the new position has any entities.
-        stack entities_at_position;
-        stack_init(&entities_at_position, sizeof(Entity));
-        if (entitycache_position_has_entities(new_x, new_y, &entities_at_position)) {
-            // if so, check if any of them are carryable.
-            for (size_t i = 0; i < entities_at_position.list.size; i++) {
-                Entity item = *(Entity *)ll_get(&entities_at_position.list, i);
-                BaseInfo *base_info = (BaseInfo *)entity_get_component(item, component_get_id("BaseInfo"));
+        // Place entity at new tile position
+        dungeon_place_entity_at_position(&world->dungeon, entity, new_x, new_y);
+        
+        // Check if the new position has any entities
+        Entity actor_at_pos, item_at_pos;
+        if (dungeon_get_entities_at_position(&world->dungeon, new_x, new_y, &actor_at_pos, &item_at_pos)) {
+            // Check if there's a carryable item at this position
+            if (item_at_pos != INVALID_ENTITY && item_at_pos != entity) {
+                BaseInfo *base_info = (BaseInfo *)entity_get_component(item_at_pos, component_get_id("BaseInfo"));
                 if (base_info && base_info->is_carryable) {
                     LOG_INFO("Picked up item: %s", base_info->name);
-                    pickup_item(entity, item);
+                    pickup_item(entity, item_at_pos);
                 }
             }
         }
-        ll_list_destroy(&entities_at_position.list);
     } else {
         LOG_INFO("Cannot move to (%d, %d) - blocked", new_x, new_y);
     }

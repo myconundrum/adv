@@ -41,6 +41,8 @@ typedef struct {
     int y;
     TileType type;
     bool explored;
+    Entity actor; // there can be only one actor per tile.
+    Entity item; // there can be only one item per tile -> but this may be a stack.
     // entity_count and entity fields removed
 } Tile;
 
@@ -67,6 +69,11 @@ bool dungeon_is_walkable(Dungeon *dungeon, int x, int y);
 // Explored map functions
 bool dungeon_is_explored(Dungeon *dungeon, int x, int y);
 void dungeon_mark_explored(Dungeon *dungeon, int x, int y);
+
+// Tile-based entity management functions
+void dungeon_place_entity_at_position(Dungeon *dungeon, Entity entity, int x, int y);
+void dungeon_remove_entity_from_position(Dungeon *dungeon, Entity entity, int x, int y);
+bool dungeon_get_entities_at_position(Dungeon *dungeon, int x, int y, Entity *actor_out, Entity *item_out);
 
 // Dungeon position entity management functions
 // Remove all entity management function declarations

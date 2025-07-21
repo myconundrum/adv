@@ -14,7 +14,6 @@ typedef struct {
     bool quit_requested;
     
     // System-specific states can be added here in the future
-    // EntityCacheState entity_cache_state;
     // RenderState render_state;
 } World;
 

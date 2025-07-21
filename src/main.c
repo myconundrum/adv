@@ -11,7 +11,6 @@
 #include "action_system.h"
 #include "template_system.h"
 #include "dungeon.h"
-#include "entitycache_system.h"
 
 // Cleanup function to handle all resources
 static void cleanup_resources(void) {
@@ -32,12 +31,6 @@ static void cleanup_resources(void) {
 static int init_game_systems(void) {
     // Initialize ECS
     ecs_init();
-
-    // initialize entity cache system - this should run prior to actions and ai, since
-    // it will have a list of entities that are "near" the player.
-    // 
-    entitycache_system_init();
-    entitycache_system_register();
     
     // Initialize and register render system (includes SDL initialization)
     if (!render_system_init()) {
@@ -97,6 +90,8 @@ static int create_entities_and_world(void) {
     if (player_pos) {
         player_pos->x = (float)g_world->dungeon.stairs_up_x;
         player_pos->y = (float)g_world->dungeon.stairs_up_y;
+        // Store player in tile
+        dungeon_place_entity_at_position(&g_world->dungeon, g_world->player, player_pos->x, player_pos->y);
         LOG_INFO("Placed player at (%d, %d)", g_world->dungeon.stairs_up_x, g_world->dungeon.stairs_up_y);
     }
     
@@ -112,6 +107,8 @@ static int create_entities_and_world(void) {
     if (enemy_pos && player_pos) {
         enemy_pos->x = player_pos->x + 1; // Right next to player
         enemy_pos->y = player_pos->y;
+        // Store enemy in tile
+        dungeon_place_entity_at_position(&g_world->dungeon, enemy, enemy_pos->x, enemy_pos->y);
         LOG_INFO("Placed enemy (orc) at (%d, %d) - right next to player", (int)enemy_pos->x, (int)enemy_pos->y);
     }
     
@@ -127,6 +124,8 @@ static int create_entities_and_world(void) {
     if (gold_pos && player_pos) {
         gold_pos->x = player_pos->x;
         gold_pos->y = player_pos->y + 1; // Below player
+        // Store gold in tile
+        dungeon_place_entity_at_position(&g_world->dungeon, gold, gold_pos->x, gold_pos->y);
         LOG_INFO("Placed gold (treasure) at (%d, %d) - below player", (int)gold_pos->x, (int)gold_pos->y);
     }
     
@@ -142,6 +141,8 @@ static int create_entities_and_world(void) {
     if (sword_pos && player_pos) {
         sword_pos->x = player_pos->x - 1; // Left of player
         sword_pos->y = player_pos->y;
+        // Store sword in tile
+        dungeon_place_entity_at_position(&g_world->dungeon, sword, sword_pos->x, sword_pos->y);
         LOG_INFO("Placed sword at (%d, %d) - left of player", (int)sword_pos->x, (int)sword_pos->y);
     }
     
