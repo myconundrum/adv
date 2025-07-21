@@ -11,6 +11,8 @@
 #include "action_system.h"
 #include "template_system.h"
 #include "dungeon.h"
+#include "playerview.h"
+#include "statusview.h"
 
 // Cleanup function to handle all resources
 static void cleanup_resources(void) {
@@ -18,6 +20,8 @@ static void cleanup_resources(void) {
         template_system_cleanup();
         ecs_shutdown();
         render_system_cleanup();
+        playerview_cleanup();
+        statusview_cleanup();
         g_world->initialized = false;
     }
     
@@ -38,6 +42,10 @@ static int init_game_systems(void) {
         return 0;
     }
     render_system_register();
+
+    // Initialize view systems
+    playerview_init();
+    statusview_init();
 
     // Initialize and register input system
     input_system_init();

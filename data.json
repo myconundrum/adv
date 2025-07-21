@@ -35,6 +35,11 @@
           "type": "Action",
           "action_type": 0,
           "action_data": 0
+        },
+        {
+          "type": "Inventory",
+          "max_items": 10,
+          "current_items": 0
         }
       ]
     },

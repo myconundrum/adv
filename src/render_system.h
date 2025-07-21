@@ -7,11 +7,24 @@
 
 // Window and cell constants
 #define CELL_SIZE 16 // pixels
-#define WINDOW_WIDTH 40 // in cells
-#define WINDOW_HEIGHT 30 // in cells
+
+// Layout constants
+#define SIDEBAR_WIDTH 30 // in cells
+#define GAME_AREA_WIDTH 40 // in cells  
+#define GAME_AREA_HEIGHT 30 // in cells
+#define STATUS_LINE_HEIGHT 2 // in cells
+
+// Total window dimensions
+#define WINDOW_WIDTH (SIDEBAR_WIDTH + GAME_AREA_WIDTH) // 70 cells total
+#define WINDOW_HEIGHT (GAME_AREA_HEIGHT + STATUS_LINE_HEIGHT) // 32 cells total
 
 #define WINDOW_WIDTH_PX (WINDOW_WIDTH * CELL_SIZE)
 #define WINDOW_HEIGHT_PX (WINDOW_HEIGHT * CELL_SIZE)    
+
+// Layout positions
+#define GAME_AREA_X_OFFSET SIDEBAR_WIDTH // Game area starts after sidebar
+#define GAME_AREA_Y_OFFSET 0
+#define STATUS_LINE_Y_OFFSET GAME_AREA_HEIGHT // Status line starts after game area
 
 #define WINDOW_TITLE "Adventure Game"
 

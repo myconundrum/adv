@@ -4,6 +4,8 @@
 #include "log.h"
 #include "world.h"
 #include "components.h"
+#include "playerview.h"
+#include "statusview.h"
 
 // Global SDL objects
 static SDL_Window *g_window = NULL;
@@ -11,7 +13,7 @@ static SDL_Renderer *g_renderer = NULL;
 static TTF_Font *g_font = NULL;
 static bool g_initialized = false;
 
-// Simple z-buffer system using arrays
+// Simple z-buffer system using arrays - now sized for game area only
 typedef struct {
     char character;
     uint8_t color;
@@ -25,8 +27,8 @@ static ZBufferCell *g_z_buffer_1 = NULL;  // Entity layer (entities)
 static int g_viewport_x = 0;
 static int g_viewport_y = 0;
 #define VIEWPORT_MARGIN 5
-#define CHUNK_X (WINDOW_WIDTH - 2 * VIEWPORT_MARGIN)
-#define CHUNK_Y (WINDOW_HEIGHT - 2 * VIEWPORT_MARGIN)
+#define CHUNK_X (GAME_AREA_WIDTH - 2 * VIEWPORT_MARGIN)
+#define CHUNK_Y (GAME_AREA_HEIGHT - 2 * VIEWPORT_MARGIN)
 
 // Helper function to render a tile at screen coordinates (to a specific renderer)
 static void render_tile_at_screen_pos_to_renderer(SDL_Renderer *target_renderer, int screen_x, int screen_y, char symbol, uint8_t color) {
@@ -118,8 +120,8 @@ static void render_tile_at_screen_pos_to_renderer(SDL_Renderer *target_renderer,
 
 // Helper function to write to z-buffer
 static void write_to_z_buffer(ZBufferCell *buffer, int screen_x, int screen_y, char character, uint8_t color) {
-    if (screen_x >= 0 && screen_x < WINDOW_WIDTH && screen_y >= 0 && screen_y < WINDOW_HEIGHT) {
-        int index = screen_y * WINDOW_WIDTH + screen_x;
+    if (screen_x >= 0 && screen_x < GAME_AREA_WIDTH && screen_y >= 0 && screen_y < GAME_AREA_HEIGHT) {
+        int index = screen_y * GAME_AREA_WIDTH + screen_x;
         buffer[index].character = character;
         buffer[index].color = color;
         buffer[index].has_content = true;
@@ -144,7 +146,7 @@ static void update_viewport(World *world) {
         g_viewport_x -= CHUNK_X;
     }
     // Right
-    if (player_x - g_viewport_x >= WINDOW_WIDTH - VIEWPORT_MARGIN) {
+    if (player_x - g_viewport_x >= GAME_AREA_WIDTH - VIEWPORT_MARGIN) {
         g_viewport_x += CHUNK_X;
     }
     // Top
@@ -152,23 +154,23 @@ static void update_viewport(World *world) {
         g_viewport_y -= CHUNK_Y;
     }
     // Bottom
-    if (player_y - g_viewport_y >= WINDOW_HEIGHT - VIEWPORT_MARGIN) {
+    if (player_y - g_viewport_y >= GAME_AREA_HEIGHT - VIEWPORT_MARGIN) {
         g_viewport_y += CHUNK_Y;
     }
 
     // Clamp viewport to dungeon bounds
     if (g_viewport_x < 0) g_viewport_x = 0;
     if (g_viewport_y < 0) g_viewport_y = 0;
-    if (g_viewport_x > DUNGEON_WIDTH - WINDOW_WIDTH) g_viewport_x = DUNGEON_WIDTH - WINDOW_WIDTH;
-    if (g_viewport_y > DUNGEON_HEIGHT - WINDOW_HEIGHT) g_viewport_y = DUNGEON_HEIGHT - WINDOW_HEIGHT;
+    if (g_viewport_x > DUNGEON_WIDTH - GAME_AREA_WIDTH) g_viewport_x = DUNGEON_WIDTH - GAME_AREA_WIDTH;
+    if (g_viewport_y > DUNGEON_HEIGHT - GAME_AREA_HEIGHT) g_viewport_y = DUNGEON_HEIGHT - GAME_AREA_HEIGHT;
 }
 
 // Initialize z-buffer system
 static bool init_z_buffers(void) {
     if (!g_renderer) return false;
     
-    // Allocate z-buffer arrays
-    size_t buffer_size = WINDOW_WIDTH * WINDOW_HEIGHT * sizeof(ZBufferCell);
+    // Allocate z-buffer arrays for game area only
+    size_t buffer_size = GAME_AREA_WIDTH * GAME_AREA_HEIGHT * sizeof(ZBufferCell);
     g_z_buffer_0 = malloc(buffer_size);
     g_z_buffer_1 = malloc(buffer_size);
     
@@ -201,10 +203,10 @@ static void render_dungeon_background(World *world) {
     if (!world || !world->dungeon.width || !g_z_buffer_0) return;
     
     // Clear z-buffer 0
-    memset(g_z_buffer_0, 0, WINDOW_WIDTH * WINDOW_HEIGHT * sizeof(ZBufferCell));
+    memset(g_z_buffer_0, 0, GAME_AREA_WIDTH * GAME_AREA_HEIGHT * sizeof(ZBufferCell));
     
-    for (int screen_y = 0; screen_y < WINDOW_HEIGHT; screen_y++) {
-        for (int screen_x = 0; screen_x < WINDOW_WIDTH; screen_x++) {
+    for (int screen_y = 0; screen_y < GAME_AREA_HEIGHT; screen_y++) {
+        for (int screen_x = 0; screen_x < GAME_AREA_WIDTH; screen_x++) {
             // Calculate dungeon coordinates
             int dungeon_x = g_viewport_x + screen_x;
             int dungeon_y = g_viewport_y + screen_y;
@@ -271,7 +273,7 @@ static void render_system_pre_update(World *world) {
     
     // Clear z-buffer 1 (entity layer)
     if (g_z_buffer_1) {
-        memset(g_z_buffer_1, 0, WINDOW_WIDTH * WINDOW_HEIGHT * sizeof(ZBufferCell));
+        memset(g_z_buffer_1, 0, GAME_AREA_WIDTH * GAME_AREA_HEIGHT * sizeof(ZBufferCell));
     }
     
     // Render dungeon background to z-buffer 0
@@ -280,29 +282,38 @@ static void render_system_pre_update(World *world) {
 
 // Post-update function to render from z-buffers and present the frame
 static void render_system_post_update(World *world) {
-    (void)world; // Unused parameter
     if (!g_renderer) return;
     
     // Clear main renderer
     SDL_SetRenderDrawColor(g_renderer, 0, 0, 0, 255);
     SDL_RenderClear(g_renderer);
     
-    // Render from z-buffers: check entity layer first, then background
-    for (int screen_y = 0; screen_y < WINDOW_HEIGHT; screen_y++) {
-        for (int screen_x = 0; screen_x < WINDOW_WIDTH; screen_x++) {
-            int index = screen_y * WINDOW_WIDTH + screen_x;
+    // Render player view sidebar
+    playerview_render(g_renderer, world);
+    
+    // Render status line
+    statusview_render(g_renderer, world);
+    
+    // Render game area from z-buffers: check entity layer first, then background
+    for (int screen_y = 0; screen_y < GAME_AREA_HEIGHT; screen_y++) {
+        for (int screen_x = 0; screen_x < GAME_AREA_WIDTH; screen_x++) {
+            int index = screen_y * GAME_AREA_WIDTH + screen_x;
+            
+            // Calculate actual screen position (offset by sidebar)
+            int actual_screen_x = (screen_x + GAME_AREA_X_OFFSET) * CELL_SIZE;
+            int actual_screen_y = (screen_y + GAME_AREA_Y_OFFSET) * CELL_SIZE;
             
             // Check entity layer first (z-buffer 1)
             if (g_z_buffer_1 && g_z_buffer_1[index].has_content) {
                 render_tile_at_screen_pos_to_renderer(g_renderer, 
-                                                     screen_x * CELL_SIZE, screen_y * CELL_SIZE,
+                                                     actual_screen_x, actual_screen_y,
                                                      g_z_buffer_1[index].character, 
                                                      g_z_buffer_1[index].color);
             }
             // Fall back to background layer (z-buffer 0)
             else if (g_z_buffer_0 && g_z_buffer_0[index].has_content) {
                 render_tile_at_screen_pos_to_renderer(g_renderer, 
-                                                     screen_x * CELL_SIZE, screen_y * CELL_SIZE,
+                                                     actual_screen_x, actual_screen_y,
                                                      g_z_buffer_0[index].character, 
                                                      g_z_buffer_0[index].color);
             }
@@ -457,9 +468,9 @@ void render_system(Entity entity, World *world) {
     int screen_x = (int)(pos->x - g_viewport_x);
     int screen_y = (int)(pos->y - g_viewport_y);
     
-    // Only process if entity is visible in viewport
-    if (screen_x >= 0 && screen_x < WINDOW_WIDTH && 
-        screen_y >= 0 && screen_y < WINDOW_HEIGHT) {
+    // Only process if entity is visible in game area viewport
+    if (screen_x >= 0 && screen_x < GAME_AREA_WIDTH && 
+        screen_y >= 0 && screen_y < GAME_AREA_HEIGHT) {
         
         // Check if entity is visible (only render if player can see it)
         int dungeon_x = (int)pos->x;
