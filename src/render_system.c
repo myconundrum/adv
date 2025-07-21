@@ -251,8 +251,7 @@ static void render_dungeon_background(World *world) {
 }
 
 // Pre-update function to handle screen clearing and viewport updates
-static void render_system_pre_update(void *world_ptr) {
-    World *world = (World *)world_ptr;
+static void render_system_pre_update(World *world) {
     if (!g_renderer) {
         LOG_ERROR("Renderer not initialized");
         return;
@@ -280,8 +279,7 @@ static void render_system_pre_update(void *world_ptr) {
 }
 
 // Post-update function to render from z-buffers and present the frame
-static void render_system_post_update(void *world_ptr) {
-    World *world = (World *)world_ptr;
+static void render_system_post_update(World *world) {
     (void)world; // Unused parameter
     if (!g_renderer) return;
     
@@ -440,8 +438,7 @@ void render_system_register(void) {
     system_register("Render System", component_mask, render_system, render_system_pre_update, render_system_post_update);
 }
 
-void render_system(Entity entity, void *world_ptr) {
-    World *world = (World *)world_ptr;
+void render_system(Entity entity, World *world) {
     if (!g_renderer || !world || !g_z_buffer_1) {
         LOG_ERROR("Renderer, world, or z-buffer not initialized");
         return;

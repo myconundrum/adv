@@ -6,8 +6,7 @@
 
 static bool key_processed_this_frame = false;
 
-void input_system(Entity entity, void *world_ptr) {
-    World *world = (World *)world_ptr;
+void input_system(Entity entity, World *world) {
     (void)world; // Unused parameter
     Action *action = (Action *)entity_get_component(entity, component_get_id("Action"));
 
@@ -21,7 +20,7 @@ void input_system(Entity entity, void *world_ptr) {
     
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_QUIT || (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)) {
-            ecs_request_quit(); // Request quit through ECS
+            world_request_quit(world); // Request quit through World
         } else if (event.type == SDL_KEYDOWN && !key_processed_this_frame) {
                 switch (event.key.keysym.sym) {
                     case SDLK_UP:

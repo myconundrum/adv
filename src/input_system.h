@@ -5,7 +5,7 @@
 #include "world.h"
 
 // Process input for a specific entity
-void input_system(Entity entity, void *world);
+void input_system(Entity entity, World *world);
 
 // Initialize input system
 void input_system_init(void);

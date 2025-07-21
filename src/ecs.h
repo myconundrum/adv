@@ -9,6 +9,7 @@
 #include <ctype.h>
 #include "types.h"
 #include "components.h"
+#include "world.h"
 
 #define MAX_ENTITIES 1000
 
@@ -20,12 +21,12 @@
 
 
 // System function pointer types
-typedef void (*SystemFunction)(Entity entity, void *world);
+typedef void (*SystemFunction)(Entity entity, World *world);
 
 // call before the system functions are called per entity.
-typedef void (*SystemPreUpdateFunction)(void *world);
+typedef void (*SystemPreUpdateFunction)(World *world);
 // call after the system functions are called per entity.
-typedef void (*SystemPostUpdateFunction)(void *world);
+typedef void (*SystemPostUpdateFunction)(World *world);
 
 // ECS Core functions
 void ecs_init(void);
@@ -54,10 +55,7 @@ void system_register(const char *name,  uint32_t component_mask,
     SystemPreUpdateFunction pre_update_function, 
     SystemPostUpdateFunction post_update_function);
 
-bool system_run_all(void *world);
-
-// Quit management
-void ecs_request_quit(void);
+bool system_run_all(World *world);
 
 // Utility functions
 int strcmp_ci(const char *s1, const char *s2);

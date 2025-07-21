@@ -22,88 +22,77 @@ void pickup_item(Entity entity, Entity item) {
         position_item->entity = entity;
     }
 
-    // remove the item from the cache 
+    // remove the item from the entity cache, since it's no longer on the ground.
     entitycache_remove_entity(item);
 }
 
-
-void action_move_entity(Entity entity, Direction direction, void *world_ptr) {
-    World *world = (World *)world_ptr;
+void action_move_entity(Entity entity, Direction direction, World *world) {
     Position *position = (Position *)entity_get_component(entity, component_get_id("Position"));
-    stack entities_at_new_position = {0};
-    
-    if (!position || !world) return;
-    
-    // Calculate new position
-    float new_x = position->x;
-    float new_y = position->y;
-    
-    switch (direction) {
-        case DIRECTION_UP:
-            new_y -= 1;
-            break;
-        case DIRECTION_DOWN:
-            new_y += 1;
-            break;
-        case DIRECTION_LEFT:
-            new_x -= 1;
-            break;
-        case DIRECTION_RIGHT:
-            new_x += 1;
-            break;
-        case DIRECTION_NONE:
-            return;
-    }
-    
-    // Check bounds
-    if (new_x < 0 || new_x >= DUNGEON_WIDTH || new_y < 0 || new_y >= DUNGEON_HEIGHT) {
+    if (!position) {
         return;
     }
 
-    if (dungeon_is_walkable(&world->dungeon, (int)new_x, (int)new_y)) {
-        // is there an entity at the new position?
-        stack_init(&entities_at_new_position, sizeof(Entity));
-        if (entitycache_position_has_entities((int)new_x, (int)new_y, &entities_at_new_position)) {
-            // if there are actors at the new position, we can't move there
-            // in the future, we will add attack/etc logic here. 
-            //If there are items then we should
-            // pick them up.
-        
-            // enumerate the entities at the new position. 
-            for (size_t i = 0; i < entities_at_new_position.list.size; i++) {
-                Entity entity_at_new_position = *(Entity *)ll_get(&entities_at_new_position.list, i);
-                // if the entity is an actor, we can't move there
-                if (entity_get_component(entity_at_new_position, component_get_id("Actor"))) {
-                    return;
-                }
+    int new_x = position->x;
+    int new_y = position->y;
 
-                BaseInfo *base_info_item = (BaseInfo *)entity_get_component(entity_at_new_position, component_get_id("BaseInfo"));
-                Actor *actor = (Actor *)entity_get_component(entity, component_get_id("Actor"));
-                if (base_info_item && base_info_item->is_carryable && actor && actor->can_carry) {
-                    pickup_item(entity, entity_at_new_position);
-                    LOG_INFO("Picked up item: %s", base_info_item->name);
+    // Calculate new position based on direction
+    switch (direction) {
+        case DIRECTION_UP:
+            new_y--;
+            break;
+        case DIRECTION_DOWN:
+            new_y++;
+            break;
+        case DIRECTION_LEFT:
+            new_x--;
+            break;
+        case DIRECTION_RIGHT:
+            new_x++;
+            break;
+        case DIRECTION_NONE:
+            return; // No movement
+    }
+
+    // Check if the new position is walkable
+    if (dungeon_is_walkable(&world->dungeon, new_x, new_y)) {
+        position->x = new_x;
+        position->y = new_y;
+        position->moved = true;
+        
+        // check if the new position has any entities.
+        stack entities_at_position;
+        stack_init(&entities_at_position, sizeof(Entity));
+        if (entitycache_position_has_entities(new_x, new_y, &entities_at_position)) {
+            // if so, check if any of them are carryable.
+            for (size_t i = 0; i < entities_at_position.list.size; i++) {
+                Entity item = *(Entity *)ll_get(&entities_at_position.list, i);
+                BaseInfo *base_info = (BaseInfo *)entity_get_component(item, component_get_id("BaseInfo"));
+                if (base_info && base_info->is_carryable) {
+                    LOG_INFO("Picked up item: %s", base_info->name);
+                    pickup_item(entity, item);
                 }
             }
         }
-        
-        // Move to the new position
-        position->x = new_x;
-        position->y = new_y;
+        ll_list_destroy(&entities_at_position.list);
+    } else {
+        LOG_INFO("Cannot move to (%d, %d) - blocked", new_x, new_y);
     }
 }
 
 void action_quit(void) {
-    exit(0);
+    if (g_world) {
+        world_request_quit(g_world);
+    }
 }
 
 
 
-void action_system(Entity entity, void *world_ptr) {
+void action_system(Entity entity, World *world) {
     Action *action = (Action *)entity_get_component(entity, component_get_id("Action"));
 
     switch (action->type) {
         case ACTION_MOVE:
-            action_move_entity(entity, (Direction)action->action_data, world_ptr);
+            action_move_entity(entity, (Direction)action->action_data, world);
             break;
         case ACTION_QUIT:
             action_quit();

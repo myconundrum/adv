@@ -13,21 +13,18 @@
 #include "dungeon.h"
 #include "entitycache_system.h"
 
-// Application state structure
-typedef struct {
-    World world;
-    int initialized;
-} AppState;
-
-static AppState app = {0};
-
 // Cleanup function to handle all resources
 static void cleanup_resources(void) {
-    if (app.initialized) {
+    if (g_world && g_world->initialized) {
         template_system_cleanup();
         ecs_shutdown();
         render_system_cleanup();
-        app.initialized = 0;
+        g_world->initialized = false;
+    }
+    
+    if (g_world) {
+        world_destroy(g_world);
+        g_world = NULL;
     }
 }
 
@@ -75,13 +72,13 @@ static int init_game_systems(void) {
 // Create game entities and world
 static int create_entities_and_world(void) {
     // Initialize dungeon
-    dungeon_init(&app.world.dungeon);
-    dungeon_generate(&app.world.dungeon);
-    LOG_INFO("Generated dungeon with %d rooms", app.world.dungeon.room_count);
+    dungeon_init(&g_world->dungeon);
+    dungeon_generate(&g_world->dungeon);
+    LOG_INFO("Generated dungeon with %d rooms", g_world->dungeon.room_count);
     
     // Create player entity from template
-    app.world.player = create_entity_from_template("player");
-    if (app.world.player == INVALID_ENTITY) {
+    g_world->player = create_entity_from_template("player");
+    if (g_world->player == INVALID_ENTITY) {
         LOG_ERROR("Failed to create player entity from template");
         return 0;
     }
@@ -89,18 +86,18 @@ static int create_entities_and_world(void) {
     // Add field of view component to player
     CompactFieldOfView player_fov;
     field_init_compact(&player_fov, FOV_RADIUS);
-    if (!component_add(app.world.player, component_get_id("FieldOfView"), &player_fov)) {
+    if (!component_add(g_world->player, component_get_id("FieldOfView"), &player_fov)) {
         LOG_ERROR("Failed to add FieldOfView component to player");
         return 0;
     }
     LOG_INFO("Added compact field of view component to player");
     
     // Place player at stairs up position
-    Position *player_pos = (Position *)entity_get_component(app.world.player, component_get_id("Position"));
+    Position *player_pos = (Position *)entity_get_component(g_world->player, component_get_id("Position"));
     if (player_pos) {
-        player_pos->x = (float)app.world.dungeon.stairs_up_x;
-        player_pos->y = (float)app.world.dungeon.stairs_up_y;
-        LOG_INFO("Placed player at (%d, %d)", app.world.dungeon.stairs_up_x, app.world.dungeon.stairs_up_y);
+        player_pos->x = (float)g_world->dungeon.stairs_up_x;
+        player_pos->y = (float)g_world->dungeon.stairs_up_y;
+        LOG_INFO("Placed player at (%d, %d)", g_world->dungeon.stairs_up_x, g_world->dungeon.stairs_up_y);
     }
     
     // Create enemy entity from template (orc)
@@ -166,9 +163,17 @@ int main(int argc, char* argv[]) {
     
     LOG_INFO("Starting Adventure Game - ECS");
     
+    // Create world instance
+    g_world = world_create();
+    if (!g_world) {
+        LOG_FATAL("Failed to create world instance");
+        return 1;
+    }
+    
     // Initialize game systems
     if (!init_game_systems()) {
         LOG_FATAL("Failed to initialize game systems");
+        cleanup_resources();
         return 1;
     }
     
@@ -179,13 +184,13 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
-    app.initialized = 1;
+    g_world->initialized = true;
     LOG_INFO("Game initialized successfully, entering main loop");
     
     // Main loop
     while (true) {
         // Run ECS systems (this will handle input, actions, rendering, and frame presentation)
-        if (!system_run_all(&app.world)) {
+        if (!system_run_all(g_world)) {
             break; // Quit requested
         }
         

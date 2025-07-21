@@ -23,9 +23,7 @@ void entitycache_system_shutdown(void) {
     field_cleanup_compact(g_field);
 }
 
-void entitycache_system_pre_update(void *world_ptr) {
-    World *world = (World *)world_ptr;
-    
+void entitycache_system_pre_update(World *world) {
     if (g_entity_cache.size > 0) {
         // remove all entities from the cache.
         ll_list_remove_all(&g_entity_cache);
@@ -42,8 +40,8 @@ void entitycache_system_pre_update(void *world_ptr) {
 }
 
 
-void entitycache_system(Entity entity, void *world_ptr) {
-    (void)world_ptr; // Suppress unused variable warning
+void entitycache_system(Entity entity, World *world) {
+    (void)world; // Suppress unused variable warning
 
     // if this entity has a position component and is in the compact field of view, 
     // add it to the entity cache   
@@ -55,8 +53,8 @@ void entitycache_system(Entity entity, void *world_ptr) {
     }
 }
 
-void entitycache_system_post_update(void *world_ptr) {
-    (void)world_ptr;
+void entitycache_system_post_update(World *world) {
+    (void)world;
     
     // clean up field of view.
     field_cleanup_compact(g_field);

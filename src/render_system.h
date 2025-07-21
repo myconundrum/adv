@@ -16,7 +16,7 @@
 #define WINDOW_TITLE "Adventure Game"
 
 // Rendering system function
-void render_system(Entity entity, void *world);
+void render_system(Entity entity, World *world);
 
 // Initialize the rendering system (includes SDL initialization)
 int render_system_init(void);

@@ -61,12 +61,6 @@ typedef struct _ecs_state {
 
 static ecs_state g_ecs_state = {0};
 
-
-
-
-// Global quit flag
-static bool g_quit_requested = false;
-
 /*
 ECS system implementation:
  - ComponentRegistry encapsulates all component-related data:
@@ -78,9 +72,6 @@ ECS system implementation:
    - systems[MAX_SYSTEMS]: contains registered systems with their component masks and functions
    - system_count: number of registered systems
 */
-
-
-
 
 // Helper function to check if entity is in active stack
 static bool entity_is_active(Entity entity) {
@@ -95,7 +86,6 @@ static bool entity_is_active(Entity entity) {
     return false;
 }
 
-// Helper function to remove entity from active stack
 static void entity_remove_from_active(Entity entity) {
     ll_node *current = g_ecs_state.active_entities.list.head;
     ll_node *prev = NULL;
@@ -235,14 +225,8 @@ bool entity_exists(Entity entity) {
     return entity < MAX_ENTITIES && entity_is_active(entity);
 }
 
-void * entity_get_component(Entity entity, uint32_t component_id) {
-
-    // return the component data if the entity has the component
-    if (g_ecs_state.components.component_active[entity] & g_ecs_state.components.component_info[component_id].bit_flag) {
-        return g_ecs_state.components.component_data[component_id][entity];
-    }
-
-    return NULL;
+void *entity_get_component(Entity entity, uint32_t component_id) {
+    return component_get(entity, component_id);
 }
 
 uint32_t component_register(const char *name, size_t size) {
@@ -338,6 +322,7 @@ bool component_has(Entity entity, uint32_t component_id) {
         component_id >= MAX_COMPONENTS || component_id >= g_ecs_state.components.component_count) {
         return false;
     }
+    
     return (g_ecs_state.components.component_active[entity] & g_ecs_state.components.component_info[component_id].bit_flag) != 0;
 }
 
@@ -366,12 +351,12 @@ void system_register(const char *name, uint32_t component_mask,
     LOG_INFO("Registered system: %s", name);
 }
 
-// Function to request quit (called by input system)
-void ecs_request_quit(void) {
-    g_quit_requested = true;
-}
-
-bool system_run_all(void *world) {
+bool system_run_all(World *world) {
+    if (!world) {
+        LOG_ERROR("World pointer is NULL");
+        return false;
+    }
+    
     for (uint32_t sys = 0; sys < g_ecs_state.systems.system_count; sys++) {
         System *system = &g_ecs_state.systems.systems[sys];
         
@@ -411,8 +396,8 @@ bool system_run_all(void *world) {
     }
     
     // Check if quit was requested
-    if (g_quit_requested) {
-        g_quit_requested = false; // Reset for next frame
+    if (world_should_quit(world)) {
+        world->quit_requested = false; // Reset for next frame
         return false;
     }
     
