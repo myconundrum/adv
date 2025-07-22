@@ -96,7 +96,10 @@ typedef struct Action {
     int action_data;
 } Action;
 
+// Forward declaration
+struct AppState;
+
 // Component initialization function
-void components_init(void);
+void components_init(struct AppState *app_state);
 
 #endif

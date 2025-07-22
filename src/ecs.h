@@ -10,8 +10,27 @@
 #include "types.h"
 #include "components.h"
 
-// Forward declaration to avoid circular includes
+// Forward declarations to avoid circular includes
 struct AppState;
+
+// System types are defined in appstate.h, but we need forward declarations here
+// Use guards to prevent redefinition when both headers are included
+#ifndef SYSTEM_TYPES_DEFINED
+#define SYSTEM_TYPES_DEFINED
+
+typedef enum {
+    SYSTEM_PRIORITY_FIRST = 0,
+    SYSTEM_PRIORITY_EARLY = 100,
+    SYSTEM_PRIORITY_NORMAL = 200,
+    SYSTEM_PRIORITY_LATE = 300,
+    SYSTEM_PRIORITY_LAST = 400
+} SystemPriority;
+
+typedef void (*SystemFunction)(Entity entity, struct AppState *app_state);
+typedef void (*SystemPreUpdateFunction)(struct AppState *app_state);
+typedef void (*SystemPostUpdateFunction)(struct AppState *app_state);
+
+#endif /* SYSTEM_TYPES_DEFINED */
 
 // Compile-time maximum limits (for array declarations)
 // Runtime limits are controlled by configuration system
@@ -24,44 +43,28 @@ struct AppState;
 #define MAX_COMPONENTS MAX_COMPONENTS_COMPILE_TIME
 #define MAX_SYSTEMS MAX_SYSTEMS_COMPILE_TIME
 
-// System priorities for execution ordering
-typedef enum {
-    SYSTEM_PRIORITY_FIRST = 0,      // Must run first (e.g., input)
-    SYSTEM_PRIORITY_EARLY = 100,    // Early execution (e.g., game logic)
-    SYSTEM_PRIORITY_NORMAL = 200,   // Normal execution (e.g., physics)
-    SYSTEM_PRIORITY_LATE = 300,     // Late execution (e.g., animation)
-    SYSTEM_PRIORITY_LAST = 400      // Must run last (e.g., rendering)
-} SystemPriority;
-
-
-// System function pointer types
-typedef void (*SystemFunction)(Entity entity, struct AppState *app_state);
-
-// call before the system functions are called per entity.
-typedef void (*SystemPreUpdateFunction)(struct AppState *app_state);
-// call after the system functions are called per entity.
-typedef void (*SystemPostUpdateFunction)(struct AppState *app_state);
+// System types are now defined in appstate.h to avoid circular dependencies
 
 // ECS Core functions
-void ecs_init(void);
-void ecs_shutdown(void);
+void ecs_init(struct AppState *app_state);
+void ecs_shutdown(struct AppState *app_state);
 
 // Entity management
-Entity entity_create(void);
-void entity_destroy(Entity entity);
-bool entity_exists(Entity entity);
-void * entity_get_component(Entity entity, uint32_t component_id);
+Entity entity_create(struct AppState *app_state);
+void entity_destroy(struct AppState *app_state, Entity entity);
+bool entity_exists(struct AppState *app_state, Entity entity);
+void * entity_get_component(struct AppState *app_state, Entity entity, uint32_t component_id);
 
 
 // Component management
-bool component_add(Entity entity, uint32_t component_id, void *data);
-bool component_remove(Entity entity, uint32_t component_id);
-void *component_get(Entity entity, uint32_t component_id);
-bool component_has(Entity entity, uint32_t component_id);
+bool component_add(struct AppState *app_state, Entity entity, uint32_t component_id, void *data);
+bool component_remove(struct AppState *app_state, Entity entity, uint32_t component_id);
+void *component_get(struct AppState *app_state, Entity entity, uint32_t component_id);
+bool component_has(struct AppState *app_state, Entity entity, uint32_t component_id);
 
 // Component registration
-uint32_t component_register(const char *name, size_t size);
-uint32_t component_get_id(const char *name);
+uint32_t component_register(struct AppState *app_state, const char *name, size_t size);
+uint32_t component_get_id(struct AppState *app_state, const char *name);
 
 // System management - Unified registration API
 // All parameters after 'function' are optional (can be NULL):
@@ -69,7 +72,8 @@ uint32_t component_get_id(const char *name);
 // - priority: can be NULL for SYSTEM_PRIORITY_NORMAL default
 // - dependencies: can be NULL if no dependencies
 // - dependency_count: should be 0 if dependencies is NULL
-void system_register(const char *name, 
+void system_register(struct AppState *app_state,
+                    const char *name, 
                     uint32_t component_mask,
                     SystemFunction function, 
                     SystemPreUpdateFunction pre_update_function,
@@ -79,18 +83,20 @@ void system_register(const char *name,
                     uint32_t dependency_count);
 
 // Legacy functions - deprecated, use system_register instead
-void system_register_basic(const char *name,  uint32_t component_mask,
-    SystemFunction function, 
-    SystemPreUpdateFunction pre_update_function, 
-    SystemPostUpdateFunction post_update_function);
+void system_register_basic(struct AppState *app_state,
+                          const char *name,  uint32_t component_mask,
+                          SystemFunction function, 
+                          SystemPreUpdateFunction pre_update_function, 
+                          SystemPostUpdateFunction post_update_function);
 
-void system_register_with_dependencies(const char *name, uint32_t component_mask,
-    SystemFunction function, 
-    SystemPreUpdateFunction pre_update_function, 
-    SystemPostUpdateFunction post_update_function,
-    SystemPriority priority,
-    const char **dependencies,
-    uint32_t dependency_count);
+void system_register_with_dependencies(struct AppState *app_state,
+                                      const char *name, uint32_t component_mask,
+                                      SystemFunction function, 
+                                      SystemPreUpdateFunction pre_update_function, 
+                                      SystemPostUpdateFunction post_update_function,
+                                      SystemPriority priority,
+                                      const char **dependencies,
+                                      uint32_t dependency_count);
 
 bool system_run_all(struct AppState *app_state);
 

@@ -196,7 +196,7 @@ Entity character_creation_finalize(CharacterCreation *creation) {
     }
     
     // Create player entity
-    Entity player = entity_create();
+    Entity player = entity_create(app_state);
     if (player == INVALID_ENTITY) {
         LOG_ERROR("Failed to create player entity");
         return INVALID_ENTITY;
@@ -204,7 +204,7 @@ Entity character_creation_finalize(CharacterCreation *creation) {
     
     // Add Position component
     Position pos = {0, 0, INVALID_ENTITY};
-    component_add(player, component_get_id("Position"), &pos);
+    component_add(app_state, player, component_get_id(app_state, "Position"), &pos);
     
     // Add BaseInfo component with character data
     BaseInfo base_info = {0};
@@ -219,7 +219,7 @@ Entity character_creation_finalize(CharacterCreation *creation) {
              character_creation_get_race_name(creation->race),
              character_creation_get_class_name(creation->class),
              creation->name);
-    component_add(player, component_get_id("BaseInfo"), &base_info);
+    component_add(app_state, player, component_get_id(app_state, "BaseInfo"), &base_info);
     
     // Add Actor component with rolled stats
     Actor actor = {0};
@@ -236,23 +236,23 @@ Entity character_creation_finalize(CharacterCreation *creation) {
     actor.damage_sides = 6;
     actor.damage_bonus = character_creation_get_ability_modifier(creation->scores.strength);
     
-    component_add(player, component_get_id("Actor"), &actor);
+    component_add(app_state, player, component_get_id(app_state, "Actor"), &actor);
     
     // Add Action component
     Action action = {ACTION_NONE, 0};
-    component_add(player, component_get_id("Action"), &action);
+    component_add(app_state, player, component_get_id(app_state, "Action"), &action);
     
     // Add Inventory component  
     Inventory inventory = {0};
     inventory.max_items = 10 + character_creation_get_ability_modifier(creation->scores.strength);
-    component_add(player, component_get_id("Inventory"), &inventory);
+    component_add(app_state, player, component_get_id(app_state, "Inventory"), &inventory);
     
     // Add FieldOfView component - essential for dungeon rendering
     CompactFieldOfView player_fov;
     field_init_compact(&player_fov, FOV_RADIUS);
-    if (!component_add(player, component_get_id("FieldOfView"), &player_fov)) {
+    if (!component_add(app_state, player, component_get_id(app_state, "FieldOfView"), &player_fov)) {
         LOG_ERROR("Failed to add FieldOfView component to player");
-        entity_destroy(player);
+        entity_destroy(app_state, player);
         return INVALID_ENTITY;
     }
     LOG_INFO("Added FieldOfView component to custom player");

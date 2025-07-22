@@ -81,7 +81,7 @@ void statusview_render(SDL_Renderer *renderer, AppState *app_state) {
     if (!g_status_font) return;
     
     // Get player components
-    Position *player_pos = (Position *)entity_get_component(app_state->player, component_get_id("Position"));
+    Position *player_pos = (Position *)entity_get_component(app_state, app_state->player, component_get_id(app_state, "Position"));
     
     SDL_Color white = {255, 255, 255, 255};
     

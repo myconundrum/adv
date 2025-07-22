@@ -7,6 +7,7 @@
 #include <string.h>
 #include "ecs.h"
 #include "components.h"
+#include "appstate.h"
 
 // Template storage structure
 typedef struct {
@@ -158,6 +159,13 @@ Entity create_entity_from_template(const char* template_name) {
         return INVALID_ENTITY;
     }
     
+    // Get AppState for ECS operations
+    AppState *app_state = appstate_get();
+    if (!app_state) {
+        ERROR_SET(RESULT_ERROR_INITIALIZATION_FAILED, "AppState not available");
+        return INVALID_ENTITY;
+    }
+    
     // Find template
     Template* template = NULL;
     for (int i = 0; i < template_count; i++) {
@@ -173,7 +181,7 @@ Entity create_entity_from_template(const char* template_name) {
     }
 
     // Create entity
-    Entity entity = entity_create();
+    Entity entity = entity_create(app_state);
     if (entity == INVALID_ENTITY) {
         ERROR_SET(RESULT_ERROR_INITIALIZATION_FAILED, "Failed to create entity from template '%s'", template_name);
         return INVALID_ENTITY;
@@ -183,7 +191,7 @@ Entity create_entity_from_template(const char* template_name) {
     cJSON* components = cJSON_GetObjectItem(template->data, "components");
     if (!components || !cJSON_IsArray(components)) {
         LOG_ERROR("No components found in template '%s'", template_name);
-        entity_destroy(entity);
+        entity_destroy(app_state, entity);
         return INVALID_ENTITY;
     }
 
@@ -201,7 +209,7 @@ Entity create_entity_from_template(const char* template_name) {
         }
 
         const char* component_type = type_obj->valuestring;
-        uint32_t component_id = component_get_id(component_type);
+        uint32_t component_id = component_get_id(app_state, component_type);
         
         if (component_id == 0xFFFFFFFF) { // INVALID_COMPONENT equivalent
             LOG_WARN("Unknown component type '%s' in template '%s'", component_type, template_name);
@@ -282,7 +290,7 @@ Entity create_entity_from_template(const char* template_name) {
         }
 
         if (component_data) {
-            if (!component_add(entity, component_id, component_data)) {
+            if (!component_add(app_state, entity, component_id, component_data)) {
                 LOG_ERROR("Failed to add component '%s' to entity from template '%s'", component_type, template_name);
                 free(component_data);
             } else {

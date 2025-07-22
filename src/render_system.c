@@ -132,7 +132,7 @@ static void update_viewport(AppState *app_state) {
     if (!app_state) return;
     
     // Get player position
-    Position *player_pos = (Position *)entity_get_component(app_state->player, component_get_id("Position"));
+    Position *player_pos = (Position *)entity_get_component(app_state, app_state->player, component_get_id(app_state, "Position"));
     if (!player_pos) return;
     
     int player_x = (int)player_pos->x;
@@ -214,7 +214,7 @@ static void render_dungeon_background(AppState *app_state) {
                 
                 // Get visibility status from player's FOV
                 uint8_t visibility = 0;
-                CompactFieldOfView *player_fov = (CompactFieldOfView *)entity_get_component(app_state->player, component_get_id("FieldOfView"));
+                CompactFieldOfView *player_fov = (CompactFieldOfView *)entity_get_component(app_state, app_state->player, component_get_id(app_state, "FieldOfView"));
                 if (player_fov) {
                     if (field_is_visible_compact(player_fov, dungeon_x, dungeon_y)) {
                         visibility = 1; // Currently visible
@@ -261,8 +261,8 @@ static void render_system_pre_update(AppState *app_state) {
     
     // Calculate field of view from player position
     if (app_state) {
-        Position *player_pos = (Position *)entity_get_component(app_state->player, component_get_id("Position"));
-        CompactFieldOfView *player_fov = (CompactFieldOfView *)entity_get_component(app_state->player, component_get_id("FieldOfView"));
+        Position *player_pos = (Position *)entity_get_component(app_state, app_state->player, component_get_id(app_state, "Position"));
+        CompactFieldOfView *player_fov = (CompactFieldOfView *)entity_get_component(app_state, app_state->player, component_get_id(app_state, "FieldOfView"));
         if (player_pos && player_fov) {
             field_calculate_fov_compact(player_fov, &app_state->dungeon, (int)player_pos->x, (int)player_pos->y);
         }
@@ -444,12 +444,18 @@ SDL_Renderer* render_system_get_renderer(void) {
 }
 
 void render_system_register(void) {
-    uint32_t component_mask = (1 << component_get_id("Position")) | (1 << component_get_id("BaseInfo"));
+    AppState *app_state = appstate_get();
+    if (!app_state) {
+        LOG_ERROR("AppState not available for render system registration");
+        return;
+    }
+    
+    uint32_t component_mask = (1 << component_get_id(app_state, "Position")) | (1 << component_get_id(app_state, "BaseInfo"));
     
     // Render system should run last and depends on input and action systems
     const char* dependencies[] = {"InputSystem", "ActionSystem"};
     SystemPriority priority = SYSTEM_PRIORITY_LAST;
-    system_register("RenderSystem", component_mask, render_system, 
+    system_register(app_state, "RenderSystem", component_mask, render_system, 
                    render_system_pre_update, render_system_post_update,
                    &priority, dependencies, 2);
     LOG_INFO("Render system registered with LAST priority, depends on InputSystem and ActionSystem");
@@ -462,8 +468,8 @@ void render_system(Entity entity, AppState *app_state) {
     }
     
     // Get component data
-    Position *pos = (Position *)entity_get_component(entity, component_get_id("Position"));
-    BaseInfo *base_info = (BaseInfo *)entity_get_component(entity, component_get_id("BaseInfo"));
+    Position *pos = (Position *)entity_get_component(app_state, entity, component_get_id(app_state, "Position"));
+    BaseInfo *base_info = (BaseInfo *)entity_get_component(app_state, entity, component_get_id(app_state, "BaseInfo"));
     
     if (!pos || !base_info) {
         LOG_ERROR("Missing position or base info component");
@@ -489,7 +495,7 @@ void render_system(Entity entity, AppState *app_state) {
         int dungeon_y = (int)pos->y;
         
         bool entity_visible = false;
-        CompactFieldOfView *player_fov = (CompactFieldOfView *)entity_get_component(app_state->player, component_get_id("FieldOfView"));
+        CompactFieldOfView *player_fov = (CompactFieldOfView *)entity_get_component(app_state, app_state->player, component_get_id(app_state, "FieldOfView"));
         if (player_fov) {
             entity_visible = field_is_visible_compact(player_fov, dungeon_x, dungeon_y);
         }

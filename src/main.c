@@ -27,7 +27,7 @@ static void cleanup_resources(void) {
     AppState *as = appstate_get();
     if (as && as->initialized) {
         template_system_cleanup();
-        ecs_shutdown();
+        ecs_shutdown(as);
         
         // Clean up view systems before render system (which calls TTF_Quit)
         playerview_cleanup();
@@ -56,8 +56,15 @@ static void cleanup_resources(void) {
 
 // Initialize game systems
 static int init_game_systems(void) {
+    // Get AppState for ECS initialization
+    AppState *as = appstate_get();
+    if (!as) {
+        LOG_ERROR("AppState not initialized");
+        return 0;
+    }
+    
     // Initialize ECS
-    ecs_init();
+    ecs_init(as);
     
     // Initialize render system (includes SDL initialization) but don't register yet
     if (!render_system_init()) {
@@ -98,6 +105,7 @@ static int init_game_systems(void) {
     
     return 1;
 }
+
 
 
 

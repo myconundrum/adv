@@ -101,14 +101,14 @@ static void char_creation_state_input(GameStateManager *manager, SDL_Event *even
             // First, remove the old template player entity
             if (app_state->player != INVALID_ENTITY) {
                 // Remove from dungeon tile system
-                Position *old_pos = (Position *)entity_get_component(app_state->player, component_get_id("Position"));
+                Position *old_pos = (Position *)entity_get_component(app_state, app_state->player, component_get_id(app_state, "Position"));
                 if (old_pos) {
                     dungeon_remove_entity_from_position(&app_state->dungeon, app_state->player, old_pos->x, old_pos->y);
                     LOG_INFO("Removed template player from dungeon at (%d, %d)", (int)old_pos->x, (int)old_pos->y);
                 }
                 
                 // Destroy the old template player entity
-                entity_destroy(app_state->player);
+                entity_destroy(app_state, app_state->player);
                 LOG_INFO("Destroyed template player entity");
             }
             
@@ -118,7 +118,7 @@ static void char_creation_state_input(GameStateManager *manager, SDL_Event *even
                 app_state->player = created_player;
                 
                 // Position the custom player at the stairs up location
-                Position *player_pos = (Position *)entity_get_component(created_player, component_get_id("Position"));
+                Position *player_pos = (Position *)entity_get_component(app_state, created_player, component_get_id(app_state, "Position"));
                 if (player_pos) {
                     player_pos->x = (float)app_state->dungeon.stairs_up_x;
                     player_pos->y = (float)app_state->dungeon.stairs_up_y;
@@ -210,14 +210,14 @@ static int create_entities_and_world(void) {
     // Add field of view component to player
     CompactFieldOfView player_fov;
     field_init_compact(&player_fov, FOV_RADIUS);
-    if (!component_add(app_state->player, component_get_id("FieldOfView"), &player_fov)) {
+    if (!component_add(app_state, app_state->player, component_get_id(app_state, "FieldOfView"), &player_fov)) {
         LOG_ERROR("Failed to add FieldOfView component to player");
         return 0;
     }
     LOG_INFO("Added compact field of view component to player");
     
     // Place player at stairs up position
-    Position *player_pos = (Position *)entity_get_component(app_state->player, component_get_id("Position"));
+    Position *player_pos = (Position *)entity_get_component(app_state, app_state->player, component_get_id(app_state, "Position"));
     if (player_pos) {
         player_pos->x = (float)app_state->dungeon.stairs_up_x;
         player_pos->y = (float)app_state->dungeon.stairs_up_y;
@@ -234,7 +234,7 @@ static int create_entities_and_world(void) {
     }
     
     // Place enemy very close to player for debugging
-    Position *enemy_pos = (Position *)entity_get_component(enemy, component_get_id("Position"));
+    Position *enemy_pos = (Position *)entity_get_component(app_state, enemy, component_get_id(app_state, "Position"));
     if (enemy_pos && player_pos) {
         enemy_pos->x = player_pos->x + 1; // Right next to player
         enemy_pos->y = player_pos->y;
@@ -251,7 +251,7 @@ static int create_entities_and_world(void) {
     }
     
     // Place gold below the player
-    Position *gold_pos = (Position *)entity_get_component(gold, component_get_id("Position"));
+    Position *gold_pos = (Position *)entity_get_component(app_state, gold, component_get_id(app_state, "Position"));
     if (gold_pos && player_pos) {
         gold_pos->x = player_pos->x;
         gold_pos->y = player_pos->y + 1; // Below player
@@ -268,7 +268,7 @@ static int create_entities_and_world(void) {
     }
     
     // Place sword to the left of the player
-    Position *sword_pos = (Position *)entity_get_component(sword, component_get_id("Position"));
+    Position *sword_pos = (Position *)entity_get_component(app_state, sword, component_get_id(app_state, "Position"));
     if (sword_pos && player_pos) {
         sword_pos->x = player_pos->x - 1; // Left of player
         sword_pos->y = player_pos->y;

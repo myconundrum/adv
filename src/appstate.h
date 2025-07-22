@@ -16,6 +16,63 @@
 struct ComponentHashEntry;
 struct AppState;
 
+// Forward declarations for ECS types (defined in ecs.c)
+typedef struct ComponentHashEntry {
+    char name[32];
+    uint32_t component_id;
+    struct ComponentHashEntry *next;
+} ComponentHashEntry;
+typedef struct {
+    ComponentHashEntry *buckets[64]; // COMPONENT_HASH_TABLE_SIZE  
+} ComponentHashTable;
+
+typedef struct {
+    char name[32];
+    uint32_t index;
+    uint32_t bit_flag;
+    size_t data_size;
+} ComponentRegistryEntry;
+
+// System types with include guard to prevent redefinition with ecs.h
+#ifndef SYSTEM_TYPES_DEFINED
+#define SYSTEM_TYPES_DEFINED
+
+// System priorities for execution ordering  
+typedef enum {
+    SYSTEM_PRIORITY_FIRST = 0,      // Must run first (e.g., input)
+    SYSTEM_PRIORITY_EARLY = 100,    // Early execution (e.g., game logic)
+    SYSTEM_PRIORITY_NORMAL = 200,   // Normal execution (e.g., physics)
+    SYSTEM_PRIORITY_LATE = 300,     // Late execution (e.g., animation)
+    SYSTEM_PRIORITY_LAST = 400      // Must run last (e.g., rendering)
+} SystemPriority;
+
+// System function pointer types (avoiding circular dependency)
+typedef void (*SystemFunction)(Entity entity, struct AppState *app_state);
+typedef void (*SystemPreUpdateFunction)(struct AppState *app_state);
+typedef void (*SystemPostUpdateFunction)(struct AppState *app_state);
+
+#endif /* SYSTEM_TYPES_DEFINED */
+
+// System definition (moved from ecs.c to avoid circular dependency)
+typedef struct {
+    uint32_t component_mask;
+    SystemFunction function;
+    SystemPreUpdateFunction pre_update_function;
+    SystemPostUpdateFunction post_update_function;
+    char name[32];
+    
+    // Dependency management
+    char dependencies[8][32];  // Names of systems this depends on (MAX_SYSTEM_DEPENDENCIES)
+    uint32_t dependency_count;
+    SystemPriority priority;
+    bool enabled;
+    uint32_t execution_order;  // Calculated execution order after sorting
+    
+    // Performance tracking
+    uint32_t execution_count;
+    float total_execution_time;
+} System;
+
 // Sparse component array definition (simplified for now)
 typedef struct SparseComponentArray {
     uint32_t *sparse;           // Entity -> dense index mapping (size: MAX_ENTITIES)
@@ -46,40 +103,17 @@ typedef struct {
 typedef struct {
     // Component registry
     struct {
-        struct {
-            char name[32];
-            uint32_t index;
-            uint32_t bit_flag;
-            size_t data_size;
-        } component_info[32]; // MAX_COMPONENTS
-        
+        ComponentRegistryEntry component_info[32]; // MAX_COMPONENTS
         SparseComponentArray component_arrays[32]; // MAX_COMPONENTS
         uint32_t component_active[1000]; // MAX_ENTITIES
         uint32_t component_count;
         bool initialized;
-        
-        // Hash table for component name lookups
-        struct {
-            struct ComponentHashEntry *buckets[64]; // COMPONENT_HASH_TABLE_SIZE
-        } name_lookup;
+        ComponentHashTable name_lookup;
     } components;
     
     // System registry
     struct {
-        struct {
-            uint32_t component_mask;
-            void (*function)(Entity entity, struct AppState *appstate);
-            void (*pre_update_function)(struct AppState *appstate);
-            void (*post_update_function)(struct AppState *appstate);
-            char name[32];
-            char dependencies[8][32]; // MAX_SYSTEM_DEPENDENCIES
-            uint32_t dependency_count;
-            int priority; // SystemPriority
-            bool enabled;
-            uint32_t execution_order;
-            uint32_t execution_count;
-            float total_execution_time;
-        } systems[32]; // MAX_SYSTEMS
+        System systems[32]; // MAX_SYSTEMS
         uint32_t system_count;
         bool needs_sorting;
     } systems;

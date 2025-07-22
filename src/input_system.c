@@ -25,7 +25,7 @@ void input_system(Entity entity, AppState *app_state) {
         return;
     }
     
-    Action *action = (Action *)entity_get_component(entity, component_get_id("Action"));
+    Action *action = (Action *)entity_get_component(app_state, entity, component_get_id(app_state, "Action"));
     if (!action) {
         // Not having an Action component is not an error for input system
         return;
@@ -105,9 +105,15 @@ void input_system(Entity entity, AppState *app_state) {
 }
 
 void input_system_register(void) {
-    uint32_t component_mask = (1 << component_get_id("Action"));
+    AppState *app_state = appstate_get();
+    if (!app_state) {
+        LOG_ERROR("AppState not available for input system registration");
+        return;
+    }
+    
+    uint32_t component_mask = (1 << component_get_id(app_state, "Action"));
     SystemPriority priority = SYSTEM_PRIORITY_NORMAL;
-    system_register("InputSystem", component_mask, input_system, NULL, NULL, &priority, NULL, 0);
+    system_register(app_state, "InputSystem", component_mask, input_system, NULL, NULL, &priority, NULL, 0);
     LOG_INFO("Input system registered");
 }
 

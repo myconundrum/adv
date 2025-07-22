@@ -2,6 +2,7 @@
 #include "log.h"
 #include "error.h"
 #include "components.h"
+#include "appstate.h"
 #include "ecs.h"
 #include <stdlib.h>
 #include <time.h>
@@ -276,7 +277,10 @@ void dungeon_place_entity_at_position(Dungeon *dungeon, Entity entity, int x, in
     Tile *tile = &dungeon->tiles[x][y];
     
     // Determine entity type and place in appropriate slot
-    Actor *actor = (Actor *)entity_get_component(entity, component_get_id("Actor"));
+    AppState *app_state = appstate_get();
+    if (!app_state) return;
+    
+    Actor *actor = (Actor *)entity_get_component(app_state, entity, component_get_id(app_state, "Actor"));
     if (actor) {
         tile->actor = entity;
     } else {

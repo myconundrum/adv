@@ -4,7 +4,6 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <stdbool.h>
-#include "world.h"
 
 // Message window configuration
 #define MESSAGE_WINDOW_DEFAULT_WIDTH 400

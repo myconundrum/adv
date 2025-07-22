@@ -13,15 +13,7 @@
 // Hash table for component name lookups
 #define COMPONENT_HASH_TABLE_SIZE 64
 
-typedef struct ComponentHashEntry {
-    char name[32];
-    uint32_t component_id;
-    struct ComponentHashEntry *next;
-} ComponentHashEntry;
-
-typedef struct {
-    ComponentHashEntry *buckets[COMPONENT_HASH_TABLE_SIZE];
-} ComponentHashTable;
+// ComponentHashEntry and ComponentHashTable are now defined in appstate.h
 
 // Simple hash function for component names
 static uint32_t hash_component_name(const char *name) {
@@ -103,24 +95,7 @@ int strcmp_ci(const char *s1, const char *s2) {
 // System dependencies and ordering
 #define MAX_SYSTEM_DEPENDENCIES 8
 
-typedef struct {
-    uint32_t component_mask;
-    SystemFunction function;
-    SystemPreUpdateFunction pre_update_function;
-    SystemPostUpdateFunction post_update_function;
-    char name[32];
-    
-    // Dependency management
-    char dependencies[MAX_SYSTEM_DEPENDENCIES][32];  // Names of systems this depends on
-    uint32_t dependency_count;
-    SystemPriority priority;
-    bool enabled;
-    uint32_t execution_order;  // Calculated execution order after sorting
-    
-    // Performance tracking
-    uint32_t execution_count;
-    float total_execution_time;
-} System;
+// System definition is now in appstate.h
 
 typedef struct {
     System systems[MAX_SYSTEMS];
@@ -141,12 +116,7 @@ static bool sparse_array_add(SparseComponentArray *array, Entity entity, void *c
 static void* sparse_array_get(SparseComponentArray *array, Entity entity);
 static bool sparse_array_remove(SparseComponentArray *array, Entity entity);
 
-typedef struct {
-    char name[32];
-    uint32_t index;
-    uint32_t bit_flag;
-    size_t data_size;
-} ComponentRegistryEntry;
+// ComponentRegistryEntry is now defined in appstate.h
 
 // Sparse component array utility functions
 static bool sparse_array_init(SparseComponentArray *array, size_t component_size) {
@@ -315,27 +285,31 @@ typedef struct _ecs_state {
     bool initialized;
 } ecs_state;
 
-static ecs_state g_ecs_state = {0};
+// Global ECS state removed - now using AppState.ecs
 
 // System dependency management functions (moved here after g_ecs_state definition)
-static int find_system_by_name(const char *name) {
-    for (uint32_t i = 0; i < g_ecs_state.systems.system_count; i++) {
-        if (strcmp_ci(g_ecs_state.systems.systems[i].name, name) == 0) {
+static int find_system_by_name(struct AppState *app_state, const char *name) {
+    if (!app_state) return -1;
+    
+    for (uint32_t i = 0; i < app_state->ecs.systems.system_count; i++) {
+        if (strcmp_ci(app_state->ecs.systems.systems[i].name, name) == 0) {
             return (int)i;
         }
     }
     return -1;
 }
 
-static bool has_circular_dependency(uint32_t system_index, uint32_t target_index, bool *visited, bool *rec_stack) {
+static bool has_circular_dependency(struct AppState *app_state, uint32_t system_index, uint32_t target_index, bool *visited, bool *rec_stack) {
+    if (!app_state) return false;
+    
     visited[system_index] = true;
     rec_stack[system_index] = true;
     
-    System *system = &g_ecs_state.systems.systems[system_index];
+    System *system = &app_state->ecs.systems.systems[system_index];
     
     // Check all dependencies of this system
     for (uint32_t i = 0; i < system->dependency_count; i++) {
-        int dep_index = find_system_by_name(system->dependencies[i]);
+        int dep_index = find_system_by_name(app_state, system->dependencies[i]);
         if (dep_index >= 0) {
             uint32_t dep_idx = (uint32_t)dep_index;
             
@@ -343,7 +317,7 @@ static bool has_circular_dependency(uint32_t system_index, uint32_t target_index
                 return true; // Found circular dependency
             }
             
-            if (!visited[dep_idx] && has_circular_dependency(dep_idx, target_index, visited, rec_stack)) {
+            if (!visited[dep_idx] && has_circular_dependency(app_state, dep_idx, target_index, visited, rec_stack)) {
                 return true;
             } else if (rec_stack[dep_idx]) {
                 return true;
@@ -355,15 +329,17 @@ static bool has_circular_dependency(uint32_t system_index, uint32_t target_index
     return false;
 }
 
-static bool validate_system_dependencies(void) {
+static bool validate_system_dependencies(struct AppState *app_state) {
     bool visited[MAX_SYSTEMS] = {false};
     bool rec_stack[MAX_SYSTEMS] = {false};
     
+    if (!app_state) return false;
+    
     // Check for circular dependencies
-    for (uint32_t i = 0; i < g_ecs_state.systems.system_count; i++) {
+    for (uint32_t i = 0; i < app_state->ecs.systems.system_count; i++) {
         if (!visited[i]) {
-            if (has_circular_dependency(i, i, visited, rec_stack)) {
-                LOG_ERROR("Circular dependency detected in system: %s", g_ecs_state.systems.systems[i].name);
+            if (has_circular_dependency(app_state, i, i, visited, rec_stack)) {
+                LOG_ERROR("Circular dependency detected in system: %s", app_state->ecs.systems.systems[i].name);
                 return false;
             }
         }
@@ -376,10 +352,10 @@ static bool validate_system_dependencies(void) {
     }
     
     // Validate that all dependencies exist
-    for (uint32_t i = 0; i < g_ecs_state.systems.system_count; i++) {
-        System *system = &g_ecs_state.systems.systems[i];
+    for (uint32_t i = 0; i < app_state->ecs.systems.system_count; i++) {
+        System *system = &app_state->ecs.systems.systems[i];
         for (uint32_t j = 0; j < system->dependency_count; j++) {
-            if (find_system_by_name(system->dependencies[j]) == -1) {
+            if (find_system_by_name(app_state, system->dependencies[j]) == -1) {
                 LOG_ERROR("System '%s' depends on non-existent system '%s'", 
                          system->name, system->dependencies[j]);
                 return false;
@@ -390,18 +366,20 @@ static bool validate_system_dependencies(void) {
     return true;
 }
 
-static void topological_sort_systems(void) {
+static void topological_sort_systems(struct AppState *app_state) {
     uint32_t in_degree[MAX_SYSTEMS] = {0};
     uint32_t queue[MAX_SYSTEMS];
     uint32_t queue_front = 0, queue_rear = 0;
     uint32_t sorted_order[MAX_SYSTEMS];
     uint32_t sorted_count = 0;
     
+    if (!app_state) return;
+    
     // Calculate in-degrees for all systems
-    for (uint32_t i = 0; i < g_ecs_state.systems.system_count; i++) {
-        System *system = &g_ecs_state.systems.systems[i];
+    for (uint32_t i = 0; i < app_state->ecs.systems.system_count; i++) {
+        System *system = &app_state->ecs.systems.systems[i];
         for (uint32_t j = 0; j < system->dependency_count; j++) {
-            int dep_index = find_system_by_name(system->dependencies[j]);
+            int dep_index = find_system_by_name(app_state, system->dependencies[j]);
             if (dep_index >= 0) {
                 in_degree[i]++;
             }
@@ -409,7 +387,7 @@ static void topological_sort_systems(void) {
     }
     
     // Add systems with no dependencies to queue
-    for (uint32_t i = 0; i < g_ecs_state.systems.system_count; i++) {
+    for (uint32_t i = 0; i < app_state->ecs.systems.system_count; i++) {
         if (in_degree[i] == 0) {
             queue[queue_rear++] = i;
         }
@@ -421,10 +399,10 @@ static void topological_sort_systems(void) {
         sorted_order[sorted_count++] = current;
         
         // For each system that depends on the current system
-        for (uint32_t i = 0; i < g_ecs_state.systems.system_count; i++) {
-            System *system = &g_ecs_state.systems.systems[i];
+        for (uint32_t i = 0; i < app_state->ecs.systems.system_count; i++) {
+            System *system = &app_state->ecs.systems.systems[i];
             for (uint32_t j = 0; j < system->dependency_count; j++) {
-                if (find_system_by_name(system->dependencies[j]) == (int)current) {
+                if (find_system_by_name(app_state, system->dependencies[j]) == (int)current) {
                     in_degree[i]--;
                     if (in_degree[i] == 0) {
                         queue[queue_rear++] = i;
@@ -438,32 +416,32 @@ static void topological_sort_systems(void) {
     // Apply the sorted order, considering priorities
     for (uint32_t i = 0; i < sorted_count; i++) {
         uint32_t system_index = sorted_order[i];
-        g_ecs_state.systems.systems[system_index].execution_order = 
-            g_ecs_state.systems.systems[system_index].priority + i;
+        app_state->ecs.systems.systems[system_index].execution_order = 
+            app_state->ecs.systems.systems[system_index].priority + i;
     }
     
     // Sort systems array by execution order
-    for (uint32_t i = 0; i < g_ecs_state.systems.system_count - 1; i++) {
-        for (uint32_t j = 0; j < g_ecs_state.systems.system_count - i - 1; j++) {
-            if (g_ecs_state.systems.systems[j].execution_order > 
-                g_ecs_state.systems.systems[j + 1].execution_order) {
+    for (uint32_t i = 0; i < app_state->ecs.systems.system_count - 1; i++) {
+        for (uint32_t j = 0; j < app_state->ecs.systems.system_count - i - 1; j++) {
+            if (app_state->ecs.systems.systems[j].execution_order > 
+                app_state->ecs.systems.systems[j + 1].execution_order) {
                 // Swap systems
-                System temp = g_ecs_state.systems.systems[j];
-                g_ecs_state.systems.systems[j] = g_ecs_state.systems.systems[j + 1];
-                g_ecs_state.systems.systems[j + 1] = temp;
+                System temp = app_state->ecs.systems.systems[j];
+                app_state->ecs.systems.systems[j] = app_state->ecs.systems.systems[j + 1];
+                app_state->ecs.systems.systems[j + 1] = temp;
             }
         }
     }
     
-    g_ecs_state.systems.needs_sorting = false;
+    app_state->ecs.systems.needs_sorting = false;
     
     LOG_INFO("Systems sorted by dependencies and priority:");
-    for (uint32_t i = 0; i < g_ecs_state.systems.system_count; i++) {
+    for (uint32_t i = 0; i < app_state->ecs.systems.system_count; i++) {
         LOG_INFO("  %d. %s (priority: %d, order: %d)", 
                  i + 1,
-                 g_ecs_state.systems.systems[i].name,
-                 g_ecs_state.systems.systems[i].priority,
-                 g_ecs_state.systems.systems[i].execution_order);
+                 app_state->ecs.systems.systems[i].name,
+                 app_state->ecs.systems.systems[i].priority,
+                 app_state->ecs.systems.systems[i].execution_order);
     }
 }
 
@@ -480,8 +458,10 @@ ECS system implementation:
 */
 
 // Helper function to check if entity is in active stack
-static bool entity_is_active(Entity entity) {
-    ll_node *current = g_ecs_state.active_entities.list.head;
+static bool entity_is_active(struct AppState *app_state, Entity entity) {
+    if (!app_state) return false;
+    
+    ll_node *current = app_state->ecs.active_entities.list.head;
     while (current != NULL) {
         Entity *active_entity = (Entity *)current->data;
         if (*active_entity == entity) {
@@ -492,8 +472,10 @@ static bool entity_is_active(Entity entity) {
     return false;
 }
 
-static void entity_remove_from_active(Entity entity) {
-    ll_node *current = g_ecs_state.active_entities.list.head;
+static void entity_remove_from_active(struct AppState *app_state, Entity entity) {
+    if (!app_state) return;
+    
+    ll_node *current = app_state->ecs.active_entities.list.head;
     ll_node *prev = NULL;
     
     while (current != NULL) {
@@ -502,18 +484,18 @@ static void entity_remove_from_active(Entity entity) {
             // Remove this node
             if (prev == NULL) {
                 // First node
-                g_ecs_state.active_entities.list.head = current->next;
-                if (g_ecs_state.active_entities.list.head == NULL) {
-                    g_ecs_state.active_entities.list.tail = NULL;
+                app_state->ecs.active_entities.list.head = current->next;
+                if (app_state->ecs.active_entities.list.head == NULL) {
+                    app_state->ecs.active_entities.list.tail = NULL;
                 }
             } else {
                 prev->next = current->next;
                 if (current->next == NULL) {
-                    g_ecs_state.active_entities.list.tail = prev;
+                    app_state->ecs.active_entities.list.tail = prev;
                 }
             }
             pool_free(current);
-            g_ecs_state.active_entities.list.size--;
+            app_state->ecs.active_entities.list.size--;
             return;
         }
         prev = current;
@@ -521,31 +503,36 @@ static void entity_remove_from_active(Entity entity) {
     }
 }
 
-void ecs_init(void) {
+void ecs_init(struct AppState *app_state) {
+    if (!app_state) {
+        LOG_ERROR("AppState cannot be NULL");
+        return;
+    }
+    
     // Initialize component active masks
     for (int i = 0; i < MAX_ENTITIES; i++) {
-        g_ecs_state.components.component_active[i] = 0;
+        app_state->ecs.components.component_active[i] = 0;
     }
     
     // Initialize component count
-    g_ecs_state.components.component_count = 0;
+    app_state->ecs.components.component_count = 0;
     
     // Initialize system count
-    g_ecs_state.systems.system_count = 0;
+    app_state->ecs.systems.system_count = 0;
     
     // Initialize component hash table
-    component_hash_table_init(&g_ecs_state.components.name_lookup);
+    component_hash_table_init(&app_state->ecs.components.name_lookup);
     
     // Register components - all components must be registered during ecs_init
-    components_init();
+    components_init(app_state);
 
     // Initialize sparse component arrays after components are registered
     size_t total_memory = 0;
-    for (uint32_t i = 0; i < g_ecs_state.components.component_count; i++) {
-        if (!sparse_array_init(&g_ecs_state.components.component_arrays[i], 
-                              g_ecs_state.components.component_info[i].data_size)) {
+    for (uint32_t i = 0; i < app_state->ecs.components.component_count; i++) {
+        if (!sparse_array_init(&app_state->ecs.components.component_arrays[i], 
+                              app_state->ecs.components.component_info[i].data_size)) {
             LOG_ERROR("Failed to initialize sparse array for component %s", 
-                      g_ecs_state.components.component_info[i].name);
+                      app_state->ecs.components.component_info[i].name);
             return;
         }
         
@@ -556,7 +543,7 @@ void ecs_init(void) {
         total_memory += component_overhead;
         
         LOG_INFO("Initialized sparse storage for component '%s' (initial capacity: %d entities)", 
-                 g_ecs_state.components.component_info[i].name,
+                 app_state->ecs.components.component_info[i].name,
                  INITIAL_COMPONENT_CAPACITY);
     }
     
@@ -567,197 +554,232 @@ void ecs_init(void) {
              (684000.0 - total_memory) / (1024 * 1024));
 
     // Initialize entity stacks
-    stack_init(&g_ecs_state.active_entities, sizeof(Entity));
-    stack_init(&g_ecs_state.inactive_entities, sizeof(Entity));
+    stack_init(&app_state->ecs.active_entities, sizeof(Entity));
+    stack_init(&app_state->ecs.inactive_entities, sizeof(Entity));
     
     // Push all entity IDs to inactive stack (in reverse order so they pop in order)
     for (int i = MAX_ENTITIES - 1; i >= 0; i--) {
         Entity entity_id = i;
-        stack_push(&g_ecs_state.inactive_entities, &entity_id);
+        stack_push(&app_state->ecs.inactive_entities, &entity_id);
     }
 
-    g_ecs_state.initialized = true;
-    LOG_INFO("ECS initialized with %d components using sparse storage", g_ecs_state.components.component_count);
+    app_state->ecs.initialized = true;
+    LOG_INFO("ECS initialized with %d components using sparse storage", app_state->ecs.components.component_count);
 }
 
-void ecs_shutdown(void) {
+void ecs_shutdown(struct AppState *app_state) {
+    if (!app_state) {
+        LOG_ERROR("AppState cannot be NULL");
+        return;
+    }
+    
     // Cleanup sparse component arrays
-    for (uint32_t i = 0; i < g_ecs_state.components.component_count; i++) {
-        sparse_array_cleanup(&g_ecs_state.components.component_arrays[i]);
+    for (uint32_t i = 0; i < app_state->ecs.components.component_count; i++) {
+        sparse_array_cleanup(&app_state->ecs.components.component_arrays[i]);
     }
     
     // Cleanup component hash table
-    component_hash_table_cleanup(&g_ecs_state.components.name_lookup);
+    component_hash_table_cleanup(&app_state->ecs.components.name_lookup);
     
     LOG_INFO("ECS shutdown complete - sparse storage cleaned up");
 }
 
-Entity entity_create(void) {
-    if (!g_ecs_state.initialized) {
+Entity entity_create(struct AppState *app_state) {
+    if (!app_state) {
+        LOG_ERROR("AppState cannot be NULL");
+        return INVALID_ENTITY;
+    }
+    
+    if (!app_state->ecs.initialized) {
         LOG_ERROR("ECS not initialized");
         return INVALID_ENTITY;
     }
     
     // Check if we have any inactive entities
-    if (stack_empty(&g_ecs_state.inactive_entities)) {
+    if (stack_empty(&app_state->ecs.inactive_entities)) {
         LOG_ERROR("Maximum entities reached");
         return INVALID_ENTITY;
     }
     
     // Pop entity ID from inactive stack
-    Entity *entity_ptr = (Entity *)stack_top(&g_ecs_state.inactive_entities);
+    Entity *entity_ptr = (Entity *)stack_top(&app_state->ecs.inactive_entities);
     Entity entity_id = *entity_ptr;
-    stack_pop(&g_ecs_state.inactive_entities);
+    stack_pop(&app_state->ecs.inactive_entities);
     
     // Add to active stack
-    stack_push(&g_ecs_state.active_entities, &entity_id);
+    stack_push(&app_state->ecs.active_entities, &entity_id);
     
     return entity_id;
 }
 
-void entity_destroy(Entity entity) {
-    if (entity >= config_get_max_entities() || !entity_is_active(entity)) return;
+void entity_destroy(struct AppState *app_state, Entity entity) {
+    if (!app_state) {
+        LOG_ERROR("AppState cannot be NULL");
+        return;
+    }
+    
+    if (entity >= config_get_max_entities() || !entity_is_active(app_state, entity)) return;
     
     // Clear all component flags for this entity
-    g_ecs_state.components.component_active[entity] = 0;
+    app_state->ecs.components.component_active[entity] = 0;
     
     // Remove from active stack
-    entity_remove_from_active(entity);
+    entity_remove_from_active(app_state, entity);
     
     // Add to inactive stack
-    stack_push(&g_ecs_state.inactive_entities, &entity);
+    stack_push(&app_state->ecs.inactive_entities, &entity);
 }
 
-bool entity_exists(Entity entity) {
-    return entity < config_get_max_entities() && entity_is_active(entity);
+bool entity_exists(struct AppState *app_state, Entity entity) {
+    if (!app_state) return false;
+    return entity < config_get_max_entities() && entity_is_active(app_state, entity);
 }
 
-void *entity_get_component(Entity entity, uint32_t component_id) {
-    return component_get(entity, component_id);
+void *entity_get_component(struct AppState *app_state, Entity entity, uint32_t component_id) {
+    return component_get(app_state, entity, component_id);
 }
 
-uint32_t component_register(const char *name, size_t size) {
+uint32_t component_register(struct AppState *app_state, const char *name, size_t size) {
+    if (!app_state) {
+        LOG_ERROR("AppState cannot be NULL");
+        return INVALID_ENTITY;
+    }
 
-    if (g_ecs_state.initialized) {
+    if (app_state->ecs.initialized) {
         LOG_ERROR("Components must be registered during ecs_init");
         return INVALID_ENTITY;
     }
 
-    if (g_ecs_state.components.component_count >= MAX_COMPONENTS) {
+    if (app_state->ecs.components.component_count >= MAX_COMPONENTS) {
         LOG_ERROR("Maximum components reached");
         return INVALID_ENTITY;
     }
     
     // Check if component already exists using hash table
-    uint32_t existing_id = component_hash_table_find(&g_ecs_state.components.name_lookup, name);
+    uint32_t existing_id = component_hash_table_find(&app_state->ecs.components.name_lookup, name);
     if (existing_id != INVALID_ENTITY) {
         return existing_id;
     }
     
     // Register new component
-    uint32_t index = g_ecs_state.components.component_count;
-    strncpy(g_ecs_state.components.component_info[index].name, name, sizeof(g_ecs_state.components.component_info[index].name) - 1);
-    g_ecs_state.components.component_info[index].name[sizeof(g_ecs_state.components.component_info[index].name) - 1] = '\0';
-    g_ecs_state.components.component_info[index].index = index;
-    g_ecs_state.components.component_info[index].bit_flag = 1 << index;
-    g_ecs_state.components.component_info[index].data_size = size;
+    uint32_t index = app_state->ecs.components.component_count;
+    strncpy(app_state->ecs.components.component_info[index].name, name, sizeof(app_state->ecs.components.component_info[index].name) - 1);
+    app_state->ecs.components.component_info[index].name[sizeof(app_state->ecs.components.component_info[index].name) - 1] = '\0';
+    app_state->ecs.components.component_info[index].index = index;
+    app_state->ecs.components.component_info[index].bit_flag = 1 << index;
+    app_state->ecs.components.component_info[index].data_size = size;
     
     // Add to hash table for fast lookup
-    component_hash_table_add(&g_ecs_state.components.name_lookup, name, index);
+    component_hash_table_add(&app_state->ecs.components.name_lookup, name, index);
     
     LOG_INFO("Registered component: %s (ID: %d, Size: %zu)", name, index, size);
     
-    g_ecs_state.components.component_count++;
+    app_state->ecs.components.component_count++;
     return index;
 }
 
-uint32_t component_get_id(const char *name) {
+uint32_t component_get_id(struct AppState *app_state, const char *name) {
+    if (!app_state) {
+        LOG_ERROR("AppState cannot be NULL");
+        return INVALID_ENTITY;
+    }
+    
     // Use hash table for O(1) lookup instead of O(n) linear search
-    return component_hash_table_find(&g_ecs_state.components.name_lookup, name);
+    return component_hash_table_find(&app_state->ecs.components.name_lookup, name);
 }
 
 
-bool component_add(Entity entity, uint32_t component_id, void *data) {
+bool component_add(struct AppState *app_state, Entity entity, uint32_t component_id, void *data) {
+    if (!app_state) {
+        ERROR_RETURN_FALSE(RESULT_ERROR_NULL_POINTER, "AppState cannot be NULL");
+    }
+    
     VALIDATE_NOT_NULL_FALSE(data, "component data");
     
     if (entity >= config_get_max_entities()) {
         ERROR_RETURN_FALSE(RESULT_ERROR_OUT_OF_BOUNDS, "Entity ID %u exceeds maximum %u", entity, config_get_max_entities());
     }
     
-    if (!entity_is_active(entity)) {
+    if (!entity_is_active(app_state, entity)) {
         ERROR_RETURN_FALSE(RESULT_ERROR_ENTITY_INVALID, "Entity %u is not active", entity);
     }
     
-    if (component_id >= MAX_COMPONENTS_COMPILE_TIME || component_id >= g_ecs_state.components.component_count) {
-        ERROR_RETURN_FALSE(RESULT_ERROR_COMPONENT_NOT_FOUND, "Component ID %u is invalid (max: %u)", component_id, g_ecs_state.components.component_count);
+    if (component_id >= MAX_COMPONENTS_COMPILE_TIME || component_id >= app_state->ecs.components.component_count) {
+        ERROR_RETURN_FALSE(RESULT_ERROR_COMPONENT_NOT_FOUND, "Component ID %u is invalid (max: %u)", component_id, app_state->ecs.components.component_count);
     }
     
     // Add component using sparse storage
-    if (!sparse_array_add(&g_ecs_state.components.component_arrays[component_id], entity, data)) {
+    if (!sparse_array_add(&app_state->ecs.components.component_arrays[component_id], entity, data)) {
         ERROR_RETURN_FALSE(RESULT_ERROR_OUT_OF_MEMORY, "Failed to add component %u to entity %u", component_id, entity);
     }
     
     // Set component flag
-    g_ecs_state.components.component_active[entity] |= g_ecs_state.components.component_info[component_id].bit_flag;
+    app_state->ecs.components.component_active[entity] |= app_state->ecs.components.component_info[component_id].bit_flag;
     
     return true;
 }
 
-bool component_remove(Entity entity, uint32_t component_id) {
-    if (entity >= MAX_ENTITIES || !entity_is_active(entity) || 
-        component_id >= MAX_COMPONENTS || component_id >= g_ecs_state.components.component_count) {
+bool component_remove(struct AppState *app_state, Entity entity, uint32_t component_id) {
+    if (!app_state || entity >= MAX_ENTITIES || !entity_is_active(app_state, entity) || 
+        component_id >= MAX_COMPONENTS || component_id >= app_state->ecs.components.component_count) {
         return false;
     }
     
     // Check if component is active
-    if (g_ecs_state.components.component_active[entity] & g_ecs_state.components.component_info[component_id].bit_flag) {
+    if (app_state->ecs.components.component_active[entity] & app_state->ecs.components.component_info[component_id].bit_flag) {
         // Remove component using sparse storage
-        sparse_array_remove(&g_ecs_state.components.component_arrays[component_id], entity);
+        sparse_array_remove(&app_state->ecs.components.component_arrays[component_id], entity);
         
         // Clear component flag
-        g_ecs_state.components.component_active[entity] &= ~g_ecs_state.components.component_info[component_id].bit_flag;
+        app_state->ecs.components.component_active[entity] &= ~app_state->ecs.components.component_info[component_id].bit_flag;
         return true;
     }
     
     return false;
 }
 
-void *component_get(Entity entity, uint32_t component_id) {
+void *component_get(struct AppState *app_state, Entity entity, uint32_t component_id) {
+    if (!app_state) {
+        ERROR_SET(RESULT_ERROR_NULL_POINTER, "AppState cannot be NULL");
+        return NULL;
+    }
+    
     if (entity >= MAX_ENTITIES) {
         ERROR_SET(RESULT_ERROR_OUT_OF_BOUNDS, "Entity ID %u exceeds maximum %d", entity, MAX_ENTITIES);
         return NULL;
     }
     
-    if (!entity_is_active(entity)) {
+    if (!entity_is_active(app_state, entity)) {
         ERROR_SET(RESULT_ERROR_ENTITY_INVALID, "Entity %u is not active", entity);
         return NULL;
     }
     
-    if (component_id >= MAX_COMPONENTS || component_id >= g_ecs_state.components.component_count) {
-        ERROR_SET(RESULT_ERROR_COMPONENT_NOT_FOUND, "Component ID %u is invalid (max: %u)", component_id, g_ecs_state.components.component_count);
+    if (component_id >= MAX_COMPONENTS || component_id >= app_state->ecs.components.component_count) {
+        ERROR_SET(RESULT_ERROR_COMPONENT_NOT_FOUND, "Component ID %u is invalid (max: %u)", component_id, app_state->ecs.components.component_count);
         return NULL;
     }
     
     // Check if component is active
-    if (g_ecs_state.components.component_active[entity] & g_ecs_state.components.component_info[component_id].bit_flag) {
-        return sparse_array_get(&g_ecs_state.components.component_arrays[component_id], entity);
+    if (app_state->ecs.components.component_active[entity] & app_state->ecs.components.component_info[component_id].bit_flag) {
+        return sparse_array_get(&app_state->ecs.components.component_arrays[component_id], entity);
     }
     
     // Component not found on entity (this is not necessarily an error)
     return NULL;
 }
 
-bool component_has(Entity entity, uint32_t component_id) {
-    if (entity >= MAX_ENTITIES || !entity_is_active(entity) || 
-        component_id >= MAX_COMPONENTS || component_id >= g_ecs_state.components.component_count) {
+bool component_has(struct AppState *app_state, Entity entity, uint32_t component_id) {
+    if (!app_state || entity >= MAX_ENTITIES || !entity_is_active(app_state, entity) || 
+        component_id >= MAX_COMPONENTS || component_id >= app_state->ecs.components.component_count) {
         return false;
     }
     
-    return (g_ecs_state.components.component_active[entity] & g_ecs_state.components.component_info[component_id].bit_flag) != 0;
+    return (app_state->ecs.components.component_active[entity] & app_state->ecs.components.component_info[component_id].bit_flag) != 0;
 }
 
 // Unified system registration API - handles all registration scenarios
-void system_register(const char *name, 
+void system_register(struct AppState *app_state,
+                    const char *name, 
                     uint32_t component_mask,
                     SystemFunction function, 
                     SystemPreUpdateFunction pre_update_function,
@@ -766,12 +788,17 @@ void system_register(const char *name,
                     const char **dependencies,
                     uint32_t dependency_count) {
 
-    if (!g_ecs_state.initialized) {
+    if (!app_state) {
+        ERROR_SET(RESULT_ERROR_NULL_POINTER, "AppState cannot be NULL");
+        return;
+    }
+    
+    if (!app_state->ecs.initialized) {
         ERROR_SET(RESULT_ERROR_INITIALIZATION_FAILED, "Components must be registered before systems can be registered");
         return;
     }
 
-    if (g_ecs_state.systems.system_count >= MAX_SYSTEMS) {
+    if (app_state->ecs.systems.system_count >= MAX_SYSTEMS) {
         ERROR_SET(RESULT_ERROR_SYSTEM_LIMIT, "Maximum systems reached (%d)", MAX_SYSTEMS);
         return;
     }
@@ -781,7 +808,7 @@ void system_register(const char *name,
         return;
     }
     
-    System *system = &g_ecs_state.systems.systems[g_ecs_state.systems.system_count];
+    System *system = &app_state->ecs.systems.systems[app_state->ecs.systems.system_count];
     
     // Basic system setup
     strncpy(system->name, name, sizeof(system->name) - 1);
@@ -809,43 +836,45 @@ void system_register(const char *name,
         }
     }
     
-    g_ecs_state.systems.system_count++;
-    g_ecs_state.systems.needs_sorting = true;
+    app_state->ecs.systems.system_count++;
+    app_state->ecs.systems.needs_sorting = true;
     
     LOG_INFO("Registered system: %s (priority: %d, dependencies: %d)", name, system->priority, system->dependency_count);
     
     // Validate and sort systems after registration
-    if (!validate_system_dependencies()) {
+    if (!validate_system_dependencies(app_state)) {
         LOG_ERROR("System dependency validation failed");
         return;
     }
     
-    topological_sort_systems();
+    topological_sort_systems(app_state);
 }
 
 // Legacy function - use system_register instead
-void system_register_basic(const char *name, uint32_t component_mask,
-    SystemFunction function, 
-    SystemPreUpdateFunction pre_update_function, 
-    SystemPostUpdateFunction post_update_function) {
+void system_register_basic(struct AppState *app_state,
+                          const char *name, uint32_t component_mask,
+                          SystemFunction function, 
+                          SystemPreUpdateFunction pre_update_function, 
+                          SystemPostUpdateFunction post_update_function) {
     
     // Call unified registration with default values
-    system_register(name, component_mask, function, 
+    system_register(app_state, name, component_mask, function, 
                    pre_update_function, post_update_function,
                    NULL, NULL, 0);
 }
 
 // Legacy function - use system_register instead  
-void system_register_with_dependencies(const char *name, uint32_t component_mask,
-    SystemFunction function, 
-    SystemPreUpdateFunction pre_update_function, 
-    SystemPostUpdateFunction post_update_function,
-    SystemPriority priority,
-    const char **dependencies,
-    uint32_t dependency_count) {
+void system_register_with_dependencies(struct AppState *app_state,
+                                      const char *name, uint32_t component_mask,
+                                      SystemFunction function, 
+                                      SystemPreUpdateFunction pre_update_function, 
+                                      SystemPostUpdateFunction post_update_function,
+                                      SystemPriority priority,
+                                      const char **dependencies,
+                                      uint32_t dependency_count) {
 
     // Call unified registration
-    system_register(name, component_mask, function, 
+    system_register(app_state, name, component_mask, function, 
                    pre_update_function, post_update_function,
                    &priority, dependencies, dependency_count);
 }
@@ -857,16 +886,16 @@ bool system_run_all(AppState *app_state) {
     }
     
     // Sort systems if needed
-    if (g_ecs_state.systems.needs_sorting) {
-        if (!validate_system_dependencies()) {
+    if (app_state->ecs.systems.needs_sorting) {
+        if (!validate_system_dependencies(app_state)) {
             LOG_ERROR("System dependency validation failed during execution");
             return false;
         }
-        topological_sort_systems();
+        topological_sort_systems(app_state);
     }
     
-    for (uint32_t sys = 0; sys < g_ecs_state.systems.system_count; sys++) {
-        System *system = &g_ecs_state.systems.systems[sys];
+    for (uint32_t sys = 0; sys < app_state->ecs.systems.system_count; sys++) {
+        System *system = &app_state->ecs.systems.systems[sys];
         
         // Skip disabled systems
         if (!system->enabled) {
@@ -879,7 +908,7 @@ bool system_run_all(AppState *app_state) {
         }
         
         // Iterate through all active entities
-        ll_node *current = g_ecs_state.active_entities.list.head;
+        ll_node *current = app_state->ecs.active_entities.list.head;
         uint32_t entities_processed = 0;
         
         while (current != NULL) {
@@ -888,9 +917,9 @@ bool system_run_all(AppState *app_state) {
             // Check if entity has all required components
             bool has_all_components = true;
             
-            for (uint32_t comp = 0; comp < g_ecs_state.components.component_count; comp++) {
-                if (system->component_mask & g_ecs_state.components.component_info[comp].bit_flag) {
-                    if (!(g_ecs_state.components.component_active[entity] & g_ecs_state.components.component_info[comp].bit_flag)) {
+            for (uint32_t comp = 0; comp < app_state->ecs.components.component_count; comp++) {
+                if (system->component_mask & app_state->ecs.components.component_info[comp].bit_flag) {
+                    if (!(app_state->ecs.components.component_active[entity] & app_state->ecs.components.component_info[comp].bit_flag)) {
                         has_all_components = false;
                         break;
                     }

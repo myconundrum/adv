@@ -75,8 +75,8 @@ void playerview_render(SDL_Renderer *renderer, AppState *app_state) {
     if (!g_sidebar_font) return;
     
     // Get player components
-    BaseInfo *player_info = (BaseInfo *)entity_get_component(app_state->player, component_get_id("BaseInfo"));
-    Actor *player_actor = (Actor *)entity_get_component(app_state->player, component_get_id("Actor"));
+    BaseInfo *player_info = (BaseInfo *)entity_get_component(app_state, app_state->player, component_get_id(app_state, "BaseInfo"));
+    Actor *player_actor = (Actor *)entity_get_component(app_state, app_state->player, component_get_id(app_state, "Actor"));
     
     SDL_Color white = {255, 255, 255, 255};
     SDL_Color green = {0, 255, 0, 255};
