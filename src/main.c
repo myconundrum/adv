@@ -1,25 +1,17 @@
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include "log.h"
 #include "config.h"
 #include "mempool.h"
 #include "ecs.h"
-#include "components.h"
 #include "appstate.h"
 #include "render_system.h"
 #include "input_system.h"
 #include "action_system.h"
 #include "template_system.h"
-#include "dungeon.h"
-#include "field.h"
 #include "playerview.h"
 #include "statusview.h"
 #include "messages.h"
 #include "messageview.h"
-#include "main_menu.h"
-#include "character_creation.h"
 #include "game_state.h"
 
 // Cleanup function to handle all resources

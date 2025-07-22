@@ -1,5 +1,4 @@
 #include "ecs.h"
-#include <stdio.h>
 #include <assert.h>
 #include "baseds.h"
 #include "field.h"

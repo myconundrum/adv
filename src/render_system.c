@@ -1,5 +1,4 @@
 #include "render_system.h"
-#include <stdio.h>
 #include <SDL2/SDL_ttf.h>
 #include "log.h"
 #include "appstate.h"

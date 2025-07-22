@@ -1,6 +1,6 @@
 #include "messages.h"
 #include <string.h>
-#include <stdio.h>
+#include <stdint.h>
 #include <time.h>
 #include <ctype.h>
 #include "log.h"
