@@ -81,8 +81,7 @@ static void char_creation_state_input(GameStateManager *manager, SDL_Event *even
         character_creation_handle_input(char_creation, event->key.keysym.sym);
         
         // Check if character creation is complete
-        if (char_creation->race_selected && char_creation->class_selected && 
-            event->key.keysym.sym == SDLK_RETURN) {
+        if (char_creation->creation_complete) {
             
             // Create game entities and world
             if (!create_entities_and_world()) {

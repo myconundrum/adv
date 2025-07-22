@@ -1,0 +1,172 @@
+{
+  "_comment": "Basic Fantasy RPG Races Configuration",
+  "_documentation": {
+    "format": "Each race defines its requirements, modifiers, and abilities",
+    "requirements": "Minimum ability scores required to play this race",
+    "modifiers": "Ability score adjustments applied during character creation",
+    "special_abilities": "Racial special abilities and traits",
+    "restrictions": "Any class or equipment restrictions"
+  },
+  "races": [
+    {
+      "id": "human",
+      "name": "Human",
+      "description": "Humans are the most common race in most fantasy worlds. They are versatile and ambitious, often serving as the standard by which other races are measured. Humans have no special abilities, but also no restrictions on class choice.",
+      "detailed_description": "Humans are the most adaptable and ambitious race. They have shorter lifespans than most other races, but they make up for it with their determination and versatility. Humans can be found in every profession and walk of life, from humble farmers to mighty kings. They are quick to learn and eager to explore new frontiers.",
+      "requirements": {},
+      "ability_modifiers": {},
+      "special_abilities": [
+        {
+          "name": "Versatility",
+          "description": "Humans may be any character class with no restrictions"
+        },
+        {
+          "name": "Ambition",
+          "description": "Humans gain experience 10% faster than other races (optional rule)"
+        }
+      ],
+      "restrictions": [],
+      "lifespan": "70-100 years",
+      "size": "Medium",
+      "movement": 30,
+      "languages": ["Common"]
+    },
+    {
+      "id": "dwarf",
+      "name": "Dwarf",
+      "description": "Dwarves are a sturdy race, shorter and stockier than humans. They are renowned for their skill in smithing and craftsmanship, as well as their resistance to magic and poison. Dwarves have a natural affinity for underground environments.",
+      "detailed_description": "Dwarves are known for their skill in warfare, their ability to withstand physical and magical punishment, their knowledge of the earth's secrets, their hard work, and their capacity for drinking ale. They are a proud and traditional people, with strong clan loyalties and long memories for both friendships and grudges.",
+      "requirements": {
+        "constitution": 9
+      },
+      "ability_modifiers": {
+        "constitution": 1,
+        "charisma": -1
+      },
+      "special_abilities": [
+        {
+          "name": "Darkvision",
+          "description": "Can see in complete darkness up to 60 feet, but only in black and white"
+        },
+        {
+          "name": "Magic Resistance",
+          "description": "+4 bonus to saving throws against magic wands, staves, rods, and spells"
+        },
+        {
+          "name": "Poison Resistance", 
+          "description": "+4 bonus to saving throws against poison"
+        },
+        {
+          "name": "Giant Fighting",
+          "description": "+1 to attack rolls against giants, ogres, and similar large creatures"
+        },
+        {
+          "name": "Defensive Training",
+          "description": "Enemies suffer -4 penalty to attack rolls against dwarves due to their defensive training against larger foes"
+        },
+        {
+          "name": "Stonework Detection",
+          "description": "1-2 on 1d6 chance to detect sloping passages, new construction, or unsafe walls when within 10 feet"
+        }
+      ],
+      "restrictions": [
+        "Cannot be Magic-Users due to their resistance to magic"
+      ],
+      "lifespan": "350-450 years",
+      "size": "Medium",
+      "movement": 20,
+      "languages": ["Common", "Dwarvish"]
+    },
+    {
+      "id": "elf",
+      "name": "Elf",
+      "description": "Elves are tall, long-lived humanoids with pointed ears and graceful features. They have a natural affinity for magic and archery, and possess keen senses that allow them to detect hidden doors and passages.",
+      "detailed_description": "Elves are a magical people of otherworldly grace, living in forests and other secluded places. They love nature and magic, art and artistry, music and poetry. Elves can live well over 700 years, giving them a broad perspective on events that might trouble the shorter-lived races more deeply.",
+      "requirements": {
+        "intelligence": 9
+      },
+      "ability_modifiers": {
+        "dexterity": 1,
+        "constitution": -1
+      },
+      "special_abilities": [
+        {
+          "name": "Darkvision", 
+          "description": "Can see in complete darkness up to 60 feet, but only in black and white"
+        },
+        {
+          "name": "Keen Senses",
+          "description": "1-2 on 1d6 chance to detect secret or concealed doors when within 10 feet, 1 on 1d6 when just passing by"
+        },
+        {
+          "name": "Sleep Immunity",
+          "description": "Immune to ghoul paralysis and sleep spells"
+        },
+        {
+          "name": "Archery Expertise",
+          "description": "+1 to attack rolls with bows and thrown weapons"
+        },
+        {
+          "name": "Spell Resistance",
+          "description": "+2 bonus to saving throws against charm and similar mental effects"
+        }
+      ],
+      "restrictions": [
+        "May only advance to 4th level as a Fighter",
+        "May only advance to 8th level as a Thief"
+      ],
+      "lifespan": "600-750 years",
+      "size": "Medium", 
+      "movement": 30,
+      "languages": ["Common", "Elvish"]
+    },
+    {
+      "id": "halfling",
+      "name": "Halfling",
+      "description": "Halflings are small, cheerful folk who love comfort and the simple pleasures of life. They are naturally stealthy and have remarkable luck, making them excellent scouts and adventurers despite their peaceful nature.",
+      "detailed_description": "Halflings are an affable and cheerful people. They cherish the bonds of family and friendship as well as the comforts of hearth and home, harboring few dreams of gold or glory. Even adventurous halflings usually venture into the world for reasons of community, friendship, wanderlust, or curiosity.",
+      "requirements": {
+        "dexterity": 9
+      },
+      "ability_modifiers": {
+        "dexterity": 1,
+        "strength": -1
+      },
+      "special_abilities": [
+        {
+          "name": "Small Size",
+          "description": "+1 Armor Class bonus due to small size"
+        },
+        {
+          "name": "Missile Attack Bonus",
+          "description": "+1 to attack rolls with all missile weapons"
+        },
+        {
+          "name": "Hiding Ability",
+          "description": "Can hide in wilderness with 90% success rate, or 2-in-6 in dungeons"
+        },
+        {
+          "name": "Lucky",
+          "description": "+1 bonus to all saving throws"
+        },
+        {
+          "name": "Brave",
+          "description": "+4 bonus to saving throws against fear effects"
+        },
+        {
+          "name": "Keen Hearing",
+          "description": "2-in-6 chance to hear noise (as a 1st level Thief)"
+        }
+      ],
+      "restrictions": [
+        "May only advance to 4th level as a Fighter",
+        "May only advance to 6th level as a Cleric",
+        "Cannot be Magic-Users"
+      ],
+      "lifespan": "150-200 years",
+      "size": "Small",
+      "movement": 20,
+      "languages": ["Common", "Halfling"]
+    }
+  ]
+} 

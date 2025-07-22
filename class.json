@@ -1,0 +1,182 @@
+{
+  "_comment": "Basic Fantasy RPG Classes Configuration",
+  "_documentation": {
+    "format": "Each class defines its requirements, abilities, and progression",
+    "requirements": "Minimum ability scores required to play this class",
+    "prime_attributes": "Attributes that affect experience point bonuses",
+    "hit_die": "Die type used for hit point calculation",
+    "base_attack_bonus": "How attack bonus progresses with level",
+    "abilities": "Special class abilities and features"
+  },
+  "classes": [
+    {
+      "id": "fighter",
+      "name": "Fighter",
+      "description": "Fighters are warriors who have dedicated their lives to the mastery of weapons and armor. They are the backbone of any adventuring party, capable of dealing and absorbing tremendous amounts of damage in combat.",
+      "detailed_description": "Fighters are specialists in physical combat and warfare. They are trained in the use of all weapons and armor, and can fight effectively with sword and shield, bow, or two-handed weapons. As they gain experience, fighters become increasingly deadly and resilient, able to take on multiple opponents or face down powerful monsters.",
+      "requirements": {},
+      "prime_attributes": ["strength"],
+      "hit_die": "d8",
+      "armor_allowed": "Any",
+      "weapons_allowed": "Any",
+      "special_abilities": [
+        {
+          "name": "Weapon Mastery",
+          "description": "Can use any weapon and armor without penalty"
+        },
+        {
+          "name": "Multiple Attacks",
+          "description": "At higher levels, gains additional attacks against weak opponents"
+        },
+        {
+          "name": "Combat Expertise",
+          "description": "Best attack bonus progression of all classes"
+        }
+      ],
+      "restrictions": [
+        "Cannot cast spells",
+        "Limited to physical combat abilities"
+      ],
+      "spell_progression": null,
+      "experience_bonus_requirements": {
+        "strength": 13
+      },
+      "role": "Tank/Damage Dealer",
+      "starting_equipment": "Chain mail, shield, sword, other weapons"
+    },
+    {
+      "id": "magic_user",
+      "name": "Magic-User",
+      "description": "Magic-Users are practitioners of arcane magic, wielding powerful spells that can alter reality itself. Though physically weak, they possess tremendous magical power that grows with experience and study.",
+      "detailed_description": "Magic-Users spend their lives in study of arcane lore, learning to harness and direct magical energies. They begin weak and vulnerable, but as they advance in level, they gain access to increasingly powerful spells that can devastate enemies, transport the party across great distances, or alter the very fabric of reality.",
+      "requirements": {
+        "intelligence": 9
+      },
+      "prime_attributes": ["intelligence"],
+      "hit_die": "d4",
+      "armor_allowed": "None",
+      "weapons_allowed": "Dagger, staff, dart, oil, torch as weapon",
+      "special_abilities": [
+        {
+          "name": "Spell Casting",
+          "description": "Can memorize and cast arcane spells from the Magic-User spell list"
+        },
+        {
+          "name": "Spell Research",
+          "description": "Can research new spells and create magical items at higher levels"
+        },
+        {
+          "name": "Read Magic",
+          "description": "Can read magical writings and scrolls"
+        },
+        {
+          "name": "Familiar",
+          "description": "May gain a magical familiar at higher levels"
+        }
+      ],
+      "restrictions": [
+        "Cannot wear armor (interferes with spell casting)",
+        "Very limited weapon selection",
+        "Physically weak (d4 hit die)"
+      ],
+      "spell_progression": {
+        "note": "Gains spell slots based on level, limited spells per day",
+        "spell_type": "Arcane",
+        "preparation": "Must memorize spells from spellbook each day"
+      },
+      "experience_bonus_requirements": {
+        "intelligence": 13
+      },
+      "role": "Ranged Damage/Utility",
+      "starting_equipment": "Robes, staff, dagger, spellbook, writing materials"
+    },
+    {
+      "id": "cleric",
+      "name": "Cleric",
+      "description": "Clerics are divine spellcasters who serve a deity or alignment. They combine martial prowess with divine magic, specializing in healing, protection, and turning undead creatures.",
+      "detailed_description": "Clerics are warriors-priests who serve a particular deity or alignment. They are granted divine magic as a reward for their faith and service. Clerics are especially effective against undead creatures and serve as the primary healers in most adventuring parties. They balance combat ability with divine spellcasting.",
+      "requirements": {
+        "wisdom": 9
+      },
+      "prime_attributes": ["wisdom"],
+      "hit_die": "d6",
+      "armor_allowed": "Any armor, shields",
+      "weapons_allowed": "Any blunt weapons (no edged weapons)",
+      "special_abilities": [
+        {
+          "name": "Divine Spellcasting",
+          "description": "Can cast divine spells granted by their deity"
+        },
+        {
+          "name": "Turn Undead",
+          "description": "Can turn away or destroy undead creatures through divine power"
+        },
+        {
+          "name": "Healing",
+          "description": "Specializes in healing and protective magic"
+        },
+        {
+          "name": "Divine Favor",
+          "description": "Receives spells directly from their deity through prayer"
+        }
+      ],
+      "restrictions": [
+        "Cannot use edged weapons (religious prohibition)",
+        "Must serve a specific deity or alignment",
+        "May lose powers if they stray from their deity's teachings"
+      ],
+      "spell_progression": {
+        "note": "Gains spell slots based on level, limited spells per day",
+        "spell_type": "Divine",
+        "preparation": "Must pray for spells each day"
+      },
+      "experience_bonus_requirements": {
+        "wisdom": 13
+      },
+      "role": "Healer/Support",
+      "starting_equipment": "Chain mail, shield, mace or war hammer, holy symbol"
+    },
+    {
+      "id": "thief",
+      "name": "Thief",
+      "description": "Thieves are rogues and scoundrels who excel at stealth, trap detection, and skills that others consider disreputable. They are invaluable for their unique abilities and versatility in dangerous situations.",
+      "detailed_description": "Thieves are skilled in the arts of stealth, climbing, trap detection and removal, and opening locks. They are not as skilled in combat as fighters, but they can be deadly when attacking from surprise. Many thieves are criminals, but others use their skills in service of adventuring parties or noble causes.",
+      "requirements": {
+        "dexterity": 9
+      },
+      "prime_attributes": ["dexterity"],
+      "hit_die": "d4",
+      "armor_allowed": "Leather armor only",
+      "weapons_allowed": "Any weapon usable in one hand",
+      "special_abilities": [
+        {
+          "name": "Thief Skills",
+          "description": "Climb walls, find and remove traps, pick locks, move silently, hide in shadows, pick pockets, hear noise"
+        },
+        {
+          "name": "Backstab",
+          "description": "Can deliver devastating sneak attacks from behind"
+        },
+        {
+          "name": "Read Languages",
+          "description": "Can attempt to read unknown languages at higher levels"
+        },
+        {
+          "name": "Use Magic Items",
+          "description": "Can use magic items normally restricted to other classes at higher levels"
+        }
+      ],
+      "restrictions": [
+        "Limited to leather armor only",
+        "Cannot use shields",
+        "Low hit points (d4 hit die)"
+      ],
+      "spell_progression": null,
+      "experience_bonus_requirements": {
+        "dexterity": 13
+      },
+      "role": "Scout/Utility/Stealth",
+      "starting_equipment": "Leather armor, thieves' tools, dagger, other light weapons"
+    }
+  ]
+} 
