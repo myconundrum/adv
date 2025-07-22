@@ -13,7 +13,7 @@ typedef void (*StateEnterFunction)(struct GameStateManager *manager);
 typedef void (*StateExitFunction)(struct GameStateManager *manager);
 typedef void (*StateInputFunction)(struct GameStateManager *manager, SDL_Event *event);
 typedef void (*StateUpdateFunction)(struct GameStateManager *manager, float delta_time);
-typedef void (*StateRenderFunction)(struct GameStateManager *manager);
+typedef void (*StateRenderFunction)(struct GameStateManager *manager, SDL_Renderer *renderer);
 
 // State handler structure
 typedef struct {

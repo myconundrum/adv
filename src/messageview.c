@@ -1,6 +1,7 @@
 #include "messageview.h"
 #include "messages.h"
 #include "render_system.h"
+#include "appstate.h"
 #include "log.h"
 #include <string.h>
 
@@ -48,16 +49,12 @@ static bool messageview_create_window(void) {
         return true; // Already created
     }
     
+    // Get main window from AppState
+    struct AppState *app_state = appstate_get();
+    SDL_Window *main_window = app_state ? app_state->render.window : NULL;
+    
     // Position the message window to the right of the main window
     int main_window_x, main_window_y;
-    SDL_Window *main_window = SDL_GL_GetCurrentWindow();
-    if (!main_window) {
-        // Fallback: try to get main window from render system
-        SDL_Renderer *main_renderer = render_system_get_renderer();
-        if (main_renderer) {
-            main_window = SDL_RenderGetWindow(main_renderer);
-        }
-    }
     
     if (main_window) {
         SDL_GetWindowPosition(main_window, &main_window_x, &main_window_y);
@@ -123,7 +120,7 @@ static bool messageview_create_window(void) {
     }
     
     // Update layout calculations
-    messageview_update_layout();
+    messageview_update_layout(app_state);
     
     return true;
 }
@@ -174,8 +171,13 @@ bool messageview_has_focus(void) {
     return g_message_view.has_focus;
 }
 
-void messageview_update_layout(void) {
+void messageview_update_layout(struct AppState *app_state) {
     if (!g_message_view.window) return;
+    
+    // Get AppState if not provided
+    if (!app_state) {
+        app_state = appstate_get();
+    }
     
     // Get current window size
     SDL_GetWindowSize(g_message_view.window, 
@@ -187,8 +189,10 @@ void messageview_update_layout(void) {
     g_message_view.lines_per_page = content_height / MESSAGE_LINE_HEIGHT;
     
     // Update text wrapping for new window width
-    messages_rewrap_text(g_message_view.window_width);
-    g_message_view.total_lines = messages_get_wrapped_line_count();
+    if (app_state) {
+        messages_rewrap_text(app_state, g_message_view.window_width);
+        g_message_view.total_lines = messages_get_wrapped_line_count(app_state);
+    }
     
     // Clamp scroll position
     int max_scroll = g_message_view.total_lines - g_message_view.lines_per_page;
@@ -249,7 +253,7 @@ void messageview_draw_scrollbar(void) {
     SDL_RenderFillRect(g_message_view.renderer, &thumb_rect);
 }
 
-void messageview_render(SDL_Renderer *main_renderer) {
+void messageview_render(SDL_Renderer *main_renderer, struct AppState *app_state) {
     (void)main_renderer; // Unused - we render to our own window
     
     if (!g_message_view.is_visible || !g_message_view.window || !g_message_view.renderer) {
@@ -257,7 +261,7 @@ void messageview_render(SDL_Renderer *main_renderer) {
     }
     
     // Update layout in case window was resized
-    messageview_update_layout();
+    messageview_update_layout(NULL);
     
     // Clear window
     SDL_SetRenderDrawColor(g_message_view.renderer, 30, 30, 30, 255);
@@ -276,12 +280,12 @@ void messageview_render(SDL_Renderer *main_renderer) {
             break;
         }
         
-        const char *line_text = messages_get_wrapped_line(line_index);
+        const char *line_text = app_state ? messages_get_wrapped_line(app_state, line_index) : NULL;
         if (line_text) {
             // Check if this is the start of a new message (for visual separation)
             if (line_index > 0) {
-                int prev_msg_idx = messages_get_message_index_for_line(line_index - 1);
-                int curr_msg_idx = messages_get_message_index_for_line(line_index);
+                            int prev_msg_idx = app_state ? messages_get_message_index_for_line(app_state, line_index - 1) : -1;
+            int curr_msg_idx = app_state ? messages_get_message_index_for_line(app_state, line_index) : -1;
                 if (prev_msg_idx != curr_msg_idx) {
                     // Draw a subtle separator line
                     SDL_SetRenderDrawColor(g_message_view.renderer, 60, 60, 60, 255);
@@ -364,7 +368,7 @@ bool messageview_handle_event(SDL_Event *event) {
                 
             case SDL_WINDOWEVENT_RESIZED:
             case SDL_WINDOWEVENT_SIZE_CHANGED:
-                messageview_update_layout();
+                messageview_update_layout(NULL);
                 return true;
                 
             case SDL_WINDOWEVENT_CLOSE:

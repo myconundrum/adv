@@ -57,8 +57,11 @@ void messageview_toggle(void);
 bool messageview_is_visible(void);
 bool messageview_has_focus(void);
 
+// Forward declaration
+struct AppState;
+
 // Rendering
-void messageview_render(SDL_Renderer *main_renderer);
+void messageview_render(SDL_Renderer *main_renderer, struct AppState *app_state);
 
 // Event handling
 bool messageview_handle_event(SDL_Event *event);
@@ -70,7 +73,7 @@ void messageview_scroll_to_bottom(void);
 void messageview_scroll_to_top(void);
 
 // Internal helper functions
-void messageview_update_layout(void);
+void messageview_update_layout(struct AppState *app_state);
 void messageview_draw_scrollbar(void);
 bool messageview_point_in_scrollbar(int x, int y);
 int messageview_scrollbar_position_to_line(int y);

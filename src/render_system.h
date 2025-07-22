@@ -34,13 +34,13 @@ struct AppState;
 void render_system(Entity entity, struct AppState *app_state);
 
 // Initialize the rendering system (includes SDL initialization)
-int render_system_init(void);
+int render_system_init(struct AppState *app_state);
 
 // Cleanup the rendering system (includes SDL cleanup)
-void render_system_cleanup(void);
+void render_system_cleanup(struct AppState *app_state);
 
 // Get the renderer (for other systems that might need it)
-SDL_Renderer* render_system_get_renderer(void);
+SDL_Renderer* render_system_get_renderer(struct AppState *app_state);
 
 // Register the rendering system with the ECS
 void render_system_register(void);

@@ -26,10 +26,10 @@ static void cleanup_resources(void) {
         statusview_cleanup();
         messageview_cleanup();
         
-        render_system_cleanup();
+        render_system_cleanup(as);
         
         // Clean up message system
-        messages_shutdown();
+        messages_shutdown(as);
         
         as->initialized = false;
     }
@@ -59,7 +59,7 @@ static int init_game_systems(void) {
     ecs_init(as);
     
     // Initialize render system (includes SDL initialization) but don't register yet
-    if (!render_system_init()) {
+    if (!render_system_init(as)) {
         LOG_ERROR("Failed to initialize render system");
         return false;
     }
@@ -69,7 +69,7 @@ static int init_game_systems(void) {
     statusview_init();
     
     // Initialize message systems
-    messages_init();
+    messages_init(as);
     messageview_init();
 
     // Initialize and register input system (first - no dependencies)

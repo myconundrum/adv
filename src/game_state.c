@@ -59,8 +59,8 @@ static void menu_state_update(GameStateManager *manager, float delta_time) {
     (void)delta_time;
 }
 
-static void menu_state_render(GameStateManager *manager) {
-    main_menu_render(&manager->menu_data.main_menu);
+static void menu_state_render(GameStateManager *manager, SDL_Renderer *renderer) {
+    main_menu_render(&manager->menu_data.main_menu, renderer);
 }
 
 // ===== CHARACTER CREATION STATE HANDLERS =====
@@ -128,9 +128,9 @@ static void char_creation_state_input(GameStateManager *manager, SDL_Event *even
                 }
                 
                 // Add some initial messages
-                messages_add("Welcome to the Adventure Game!");
-                messages_add("Your quest begins in the depths of an ancient dungeon.");
-                messages_add("Use arrow keys to move around. Good luck!");
+                messages_add(app_state, "Welcome to the Adventure Game!");
+                messages_add(app_state, "Your quest begins in the depths of an ancient dungeon.");
+                messages_add(app_state, "Use arrow keys to move around. Good luck!");
                 
                 // Start playing
                 game_state_manager_set_state(manager, APP_STATE_PLAYING);
@@ -148,8 +148,8 @@ static void char_creation_state_update(GameStateManager *manager, float delta_ti
     (void)delta_time;
 }
 
-static void char_creation_state_render(GameStateManager *manager) {
-    character_creation_render(&manager->char_creation_data.char_creation);
+static void char_creation_state_render(GameStateManager *manager, SDL_Renderer *renderer) {
+    character_creation_render(&manager->char_creation_data.char_creation, renderer);
 }
 
 // ===== GAMEPLAY STATE HANDLERS =====
@@ -182,9 +182,10 @@ static void gameplay_state_update(GameStateManager *manager, float delta_time) {
     }
 }
 
-static void gameplay_state_render(GameStateManager *manager) {
+static void gameplay_state_render(GameStateManager *manager, SDL_Renderer *renderer) {
     // Rendering is handled by the render system through ECS
     (void)manager;
+    (void)renderer;
 }
 
 // ===== HELPER FUNCTION =====
@@ -406,9 +407,16 @@ void game_state_manager_update(GameStateManager *manager, float delta_time) {
 void game_state_manager_render(GameStateManager *manager) {
     if (!manager) return;
     
+    // Get renderer from AppState
+    AppState *app_state = appstate_get();
+    if (!app_state || !app_state->render.renderer) {
+        LOG_ERROR("AppState or renderer not available for rendering");
+        return;
+    }
+    
     // Delegate to current state handler
     if (manager->handlers[manager->current_state].on_render) {
-        manager->handlers[manager->current_state].on_render(manager);
+        manager->handlers[manager->current_state].on_render(manager, app_state->render.renderer);
     }
 }
 

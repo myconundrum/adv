@@ -32,7 +32,7 @@ void pickup_item(Entity entity, Entity item) {
     if (item_info) {
         char pickup_message[256];
         snprintf(pickup_message, sizeof(pickup_message), "You picked up: %s", item_info->name);
-        messages_add(pickup_message);
+        messages_add(app_state, pickup_message);
         LOG_INFO("Picked up item: %s", item_info->name);
     }
 }

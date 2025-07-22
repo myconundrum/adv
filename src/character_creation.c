@@ -405,12 +405,8 @@ void character_creation_handle_input(CharacterCreation *creation, int key) {
 }
 
 // Character creation UI rendering
-void character_creation_render(CharacterCreation *creation) {
-    if (!creation) return;
-    
-    // Get renderer from render system
-    SDL_Renderer *renderer = render_system_get_renderer();
-    if (!renderer) return;
+void character_creation_render(CharacterCreation *creation, SDL_Renderer *renderer) {
+    if (!creation || !renderer) return;
     
     // Clear screen
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);

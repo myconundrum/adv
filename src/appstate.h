@@ -124,43 +124,8 @@ typedef struct {
     bool initialized;
 } ECSState;
 
-// Main AppState structure - consolidates all global state
-typedef struct AppState {
-    // Core game state (from World)
-    Dungeon dungeon;
-    Entity player;
-    bool initialized;
-    bool quit_requested;
-    AppStateEnum current_state;
-    
-    // ECS state (from g_ecs_state)
-    ECSState ecs;
-    
-    // Message system (from g_message_queue)
-    MessageQueue messages;
-    
-    // Error handling (from g_last_error)
-    ErrorContext error;
-    uint32_t error_counter;
-    
-    // Render system globals
-    struct {
-        SDL_Window *window;
-        SDL_Renderer *renderer;
-        TTF_Font *font;
-        bool initialized;
-        
-        // Z-buffers
-        ZBufferCell *z_buffer_0;  // Background layer
-        ZBufferCell *z_buffer_1;  // Entity layer
-        
-        // Viewport state
-        int viewport_x;
-        int viewport_y;
-    } render;
-    
     // Message view state
-    struct {
+typedef struct {
         SDL_Window *window;
         SDL_Renderer *renderer;
         TTF_Font *font;
@@ -174,8 +139,54 @@ typedef struct AppState {
         bool scrollbar_dragging;
         int scrollbar_drag_offset;
         bool initialized;
-    } message_view;
+} message_view;
+
     
+    // Render system globals
+   typedef struct {
+        SDL_Window *window;
+        SDL_Renderer *renderer;
+        TTF_Font *font;
+        bool initialized;
+        
+        // Z-buffers
+        ZBufferCell *z_buffer_0;  // Background layer
+        ZBufferCell *z_buffer_1;  // Entity layer
+        
+        // Viewport state
+        int viewport_x;
+        int viewport_y;
+    } RenderState;
+
+// Main AppState structure - consolidates all global state
+typedef struct AppState {
+
+    // Core game state 
+    Dungeon dungeon;
+    Entity player;
+    bool initialized;
+    bool quit_requested;
+
+
+    AppStateEnum current_state;
+    
+    // ECS state (from g_ecs_state)
+    ECSState ecs;
+    
+    // Message system (from g_message_queue)
+    MessageQueue messages;
+    
+    // Error handling (from g_last_error)
+    ErrorContext error;
+    uint32_t error_counter;
+
+
+    // Message view state 
+    message_view message_view;  
+
+    // Render state
+    RenderState render;
+
 } AppState;
 
 // Singleton access functions

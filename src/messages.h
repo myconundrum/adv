@@ -35,26 +35,26 @@ typedef struct {
     bool need_rewrap; // Flag to indicate text needs rewrapping
 } MessageQueue;
 
-// Global message queue
-extern MessageQueue g_message_queue;
+// Forward declaration
+struct AppState;
 
 // Message system functions
-void messages_init(void);
-void messages_shutdown(void);
+void messages_init(struct AppState *app_state);
+void messages_shutdown(struct AppState *app_state);
 
-// Message management
-void messages_add(const char *text);
-void messages_clear(void);
-int messages_get_count(void);
+// Message management  
+void messages_add(struct AppState *app_state, const char *text);
+void messages_clear(struct AppState *app_state);
+int messages_get_count(struct AppState *app_state);
 
 // Text wrapping and display
-void messages_rewrap_text(int window_width);
-int messages_get_wrapped_line_count(void);
-const char* messages_get_wrapped_line(int index);
-int messages_get_message_index_for_line(int line_index);
+void messages_rewrap_text(struct AppState *app_state, int window_width);
+int messages_get_wrapped_line_count(struct AppState *app_state);
+const char* messages_get_wrapped_line(struct AppState *app_state, int index);
+int messages_get_message_index_for_line(struct AppState *app_state, int line_index);
 
 // Message access
-const Message* messages_get(int index);
-const Message* messages_get_latest(void);
+const Message* messages_get(struct AppState *app_state, int index);
+const Message* messages_get_latest(struct AppState *app_state);
 
 #endif 

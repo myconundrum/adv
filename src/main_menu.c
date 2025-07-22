@@ -105,12 +105,8 @@ void main_menu_handle_input(MainMenu *menu, int key) {
 }
 
 // Main menu rendering
-void main_menu_render(MainMenu *menu) {
-    if (!menu) return;
-    
-    // Get renderer from render system
-    SDL_Renderer *renderer = render_system_get_renderer();
-    if (!renderer) return;
+void main_menu_render(MainMenu *menu, SDL_Renderer *renderer) {
+    if (!menu || !renderer) return;
     
     // Clear screen with dark blue background
     SDL_SetRenderDrawColor(renderer, 0, 0, 64, 255);

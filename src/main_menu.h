@@ -2,6 +2,7 @@
 #define MAIN_MENU_H
 
 #include <stdbool.h>
+#include <SDL2/SDL.h>
 
 // Menu options
 typedef enum {
@@ -25,7 +26,7 @@ void main_menu_cleanup(MainMenu *menu);
 void main_menu_handle_input(MainMenu *menu, int key);
 
 // Rendering
-void main_menu_render(MainMenu *menu);
+void main_menu_render(MainMenu *menu, SDL_Renderer *renderer);
 
 // Get selection
 MenuOption main_menu_get_selection(const MainMenu *menu);

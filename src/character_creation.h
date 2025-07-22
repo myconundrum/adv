@@ -74,7 +74,7 @@ void character_creation_set_name(CharacterCreation *creation, const char *name);
 Entity character_creation_finalize(CharacterCreation *creation);
 
 // UI functions
-void character_creation_render(CharacterCreation *creation);
+void character_creation_render(CharacterCreation *creation, SDL_Renderer *renderer);
 void character_creation_handle_input(CharacterCreation *creation, int key);
 
 // Utility functions

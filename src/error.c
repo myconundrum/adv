@@ -4,55 +4,83 @@
 #include <stdio.h>
 #include <string.h>
 
-// Global error context
+// Include AppState for accessing error fields
+// Note: This is safe because error.h doesn't include appstate.h
+#include "appstate.h"
+
+// Global error context (fallback when AppState not available)
 ErrorContext g_last_error = {RESULT_OK, "", NULL, 0, NULL, 0};
 
-// Global error counter for unique error IDs
+// Global error counter for unique error IDs (fallback)
 static uint32_t g_error_counter = 0;
 
 void error_set(Result code, const char *file, int line, const char *function, const char *format, ...) {
-    g_last_error.code = code;
-    g_last_error.file = file;
-    g_last_error.line = line;
-    g_last_error.function = function;
-    g_last_error.error_id = ++g_error_counter;
+    // Try to get AppState for better error tracking
+    struct AppState *app_state = appstate_get();
+    ErrorContext *error_ctx = app_state ? &app_state->error : &g_last_error;
+    uint32_t *error_counter = app_state ? &app_state->error_counter : &g_error_counter;
+    
+    error_ctx->code = code;
+    error_ctx->file = file;
+    error_ctx->line = line;
+    error_ctx->function = function;
+    error_ctx->error_id = ++(*error_counter);
     
     // Format the error message
     if (format) {
         va_list args;
         va_start(args, format);
-        vsnprintf(g_last_error.message, sizeof(g_last_error.message), format, args);
+        vsnprintf(error_ctx->message, sizeof(error_ctx->message), format, args);
         va_end(args);
     } else {
-        strncpy(g_last_error.message, error_code_to_string(code), sizeof(g_last_error.message) - 1);
-        g_last_error.message[sizeof(g_last_error.message) - 1] = '\0';
+        strncpy(error_ctx->message, error_code_to_string(code), sizeof(error_ctx->message) - 1);
+        error_ctx->message[sizeof(error_ctx->message) - 1] = '\0';
+    }
+    
+    // Also update global for backward compatibility when AppState is available
+    if (app_state) {
+        g_last_error = *error_ctx;
     }
     
     // Log the error
     LOG_ERROR("[Error #%u] %s in %s:%d (%s()): %s", 
-              g_last_error.error_id,
+              error_ctx->error_id,
               error_code_to_string(code),
               file ? file : "unknown",
               line,
               function ? function : "unknown",
-              g_last_error.message);
+              error_ctx->message);
 }
 
 void error_clear(void) {
-    g_last_error.code = RESULT_OK;
-    g_last_error.message[0] = '\0';
-    g_last_error.file = NULL;
-    g_last_error.line = 0;
-    g_last_error.function = NULL;
-    g_last_error.error_id = 0;
+    // Try to get AppState and clear its error context
+    struct AppState *app_state = appstate_get();
+    ErrorContext *error_ctx = app_state ? &app_state->error : &g_last_error;
+    
+    error_ctx->code = RESULT_OK;
+    error_ctx->message[0] = '\0';
+    error_ctx->file = NULL;
+    error_ctx->line = 0;
+    error_ctx->function = NULL;
+    error_ctx->error_id = 0;
+    
+    // Also clear global for backward compatibility
+    if (app_state) {
+        g_last_error = *error_ctx;
+    }
 }
 
 const ErrorContext* error_get_last(void) {
-    return &g_last_error;
+    // Try to get AppState and return its error context
+    struct AppState *app_state = appstate_get();
+    return app_state ? &app_state->error : &g_last_error;
 }
 
 bool error_has_error(void) {
-    return g_last_error.code != RESULT_OK;
+    // Try to get AppState and check its error context
+    struct AppState *app_state = appstate_get();
+    ErrorContext *error_ctx = app_state ? &app_state->error : &g_last_error;
+    return error_ctx->code != RESULT_OK;
 }
 
 const char* error_code_to_string(Result code) {
