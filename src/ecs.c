@@ -776,106 +776,90 @@ bool component_has(struct AppState *app_state, Entity entity, uint32_t component
     return (app_state->ecs.components.component_active[entity] & app_state->ecs.components.component_info[component_id].bit_flag) != 0;
 }
 
-// Unified system registration API - handles all registration scenarios
-void system_register(struct AppState *app_state,
-                    const char *name, 
-                    uint32_t component_mask,
-                    SystemFunction function, 
-                    SystemPreUpdateFunction pre_update_function,
-                    SystemPostUpdateFunction post_update_function,
-                    SystemPriority *priority,
-                    const char **dependencies,
-                    uint32_t dependency_count) {
+// Helper function to count NULL-terminated dependency array
+static uint32_t count_dependencies(const char **dependencies) {
+    if (!dependencies) return 0;
+    
+    uint32_t count = 0;
+    while (dependencies[count] != NULL && count < MAX_SYSTEM_DEPENDENCIES) {
+        count++;
+    }
+    return count;
+}
 
+// Clean, unified system registration API using SystemConfig
+bool system_register(struct AppState *app_state, const SystemConfig *config) {
     if (!app_state) {
         ERROR_SET(RESULT_ERROR_NULL_POINTER, "AppState cannot be NULL");
-        return;
+        return false;
+    }
+    
+    if (!config) {
+        ERROR_SET(RESULT_ERROR_NULL_POINTER, "SystemConfig cannot be NULL");
+        return false;
+    }
+    
+    if (!config->name || !config->function) {
+        ERROR_SET(RESULT_ERROR_NULL_POINTER, "System name and function are required");
+        return false;
     }
     
     if (!app_state->ecs.initialized) {
-        ERROR_SET(RESULT_ERROR_INITIALIZATION_FAILED, "Components must be registered before systems can be registered");
-        return;
+        ERROR_SET(RESULT_ERROR_INITIALIZATION_FAILED, "ECS must be initialized before registering systems");
+        return false;
     }
 
     if (app_state->ecs.systems.system_count >= MAX_SYSTEMS) {
         ERROR_SET(RESULT_ERROR_SYSTEM_LIMIT, "Maximum systems reached (%d)", MAX_SYSTEMS);
-        return;
+        return false;
     }
     
+    // Count dependencies if provided
+    uint32_t dependency_count = count_dependencies(config->dependencies);
     if (dependency_count > MAX_SYSTEM_DEPENDENCIES) {
         ERROR_SET(RESULT_ERROR_INVALID_PARAMETER, "Too many dependencies (%d > %d)", dependency_count, MAX_SYSTEM_DEPENDENCIES);
-        return;
+        return false;
     }
     
     System *system = &app_state->ecs.systems.systems[app_state->ecs.systems.system_count];
     
     // Basic system setup
-    strncpy(system->name, name, sizeof(system->name) - 1);
+    strncpy(system->name, config->name, sizeof(system->name) - 1);
     system->name[sizeof(system->name) - 1] = '\0';
-    system->function = function;
-    system->pre_update_function = pre_update_function;  // Can be NULL
-    system->post_update_function = post_update_function; // Can be NULL
-    system->component_mask = component_mask;
+    system->function = config->function;
+    system->pre_update_function = config->pre_update;   // Can be NULL
+    system->post_update_function = config->post_update; // Can be NULL
+    system->component_mask = config->component_mask;
     
-    // Dependency and priority setup with NULL handling
-    system->priority = priority ? *priority : SYSTEM_PRIORITY_NORMAL;
-    system->dependency_count = dependencies ? dependency_count : 0;
+    // Priority and dependency setup
+    system->priority = config->priority;
+    system->dependency_count = dependency_count;
     system->enabled = true;
     system->execution_order = system->priority; // Initial order, will be refined by sorting
     system->execution_count = 0;
     system->total_execution_time = 0.0f;
     
     // Copy dependencies if provided
-    if (dependencies && dependency_count > 0) {
-        for (uint32_t i = 0; i < dependency_count && i < MAX_SYSTEM_DEPENDENCIES; i++) {
-            if (dependencies[i]) {
-                strncpy(system->dependencies[i], dependencies[i], sizeof(system->dependencies[i]) - 1);
-                system->dependencies[i][sizeof(system->dependencies[i]) - 1] = '\0';
-            }
+    if (config->dependencies && dependency_count > 0) {
+        for (uint32_t i = 0; i < dependency_count; i++) {
+            strncpy(system->dependencies[i], config->dependencies[i], sizeof(system->dependencies[i]) - 1);
+            system->dependencies[i][sizeof(system->dependencies[i]) - 1] = '\0';
         }
     }
     
     app_state->ecs.systems.system_count++;
     app_state->ecs.systems.needs_sorting = true;
     
-    LOG_INFO("Registered system: %s (priority: %d, dependencies: %d)", name, system->priority, system->dependency_count);
+    LOG_INFO("Registered system: %s (priority: %d, dependencies: %d)", config->name, system->priority, system->dependency_count);
     
     // Validate and sort systems after registration
     if (!validate_system_dependencies(app_state)) {
         LOG_ERROR("System dependency validation failed");
-        return;
+        return false;
     }
     
     topological_sort_systems(app_state);
-}
-
-// Legacy function - use system_register instead
-void system_register_basic(struct AppState *app_state,
-                          const char *name, uint32_t component_mask,
-                          SystemFunction function, 
-                          SystemPreUpdateFunction pre_update_function, 
-                          SystemPostUpdateFunction post_update_function) {
-    
-    // Call unified registration with default values
-    system_register(app_state, name, component_mask, function, 
-                   pre_update_function, post_update_function,
-                   NULL, NULL, 0);
-}
-
-// Legacy function - use system_register instead  
-void system_register_with_dependencies(struct AppState *app_state,
-                                      const char *name, uint32_t component_mask,
-                                      SystemFunction function, 
-                                      SystemPreUpdateFunction pre_update_function, 
-                                      SystemPostUpdateFunction post_update_function,
-                                      SystemPriority priority,
-                                      const char **dependencies,
-                                      uint32_t dependency_count) {
-
-    // Call unified registration
-    system_register(app_state, name, component_mask, function, 
-                   pre_update_function, post_update_function,
-                   &priority, dependencies, dependency_count);
+    return true;
 }
 
 bool system_run_all(AppState *app_state) {

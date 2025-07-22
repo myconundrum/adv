@@ -492,12 +492,23 @@ void render_system_register(void) {
     uint32_t component_mask = (1 << component_get_id(app_state, "Position")) | (1 << component_get_id(app_state, "BaseInfo"));
     
     // Render system should run last and depends on input and action systems
-    const char* dependencies[] = {"InputSystem", "ActionSystem"};
-    SystemPriority priority = SYSTEM_PRIORITY_LAST;
-    system_register(app_state, "RenderSystem", component_mask, render_system, 
-                   render_system_pre_update, render_system_post_update,
-                   &priority, dependencies, 2);
-    LOG_INFO("Render system registered with LAST priority, depends on InputSystem and ActionSystem");
+    static const char* dependencies[] = {"InputSystem", "ActionSystem", NULL};
+    
+    SystemConfig config = {
+        .name = "RenderSystem",
+        .component_mask = component_mask,
+        .function = render_system,
+        .pre_update = render_system_pre_update,
+        .post_update = render_system_post_update,
+        .priority = SYSTEM_PRIORITY_LAST,
+        .dependencies = dependencies
+    };
+    
+    if (system_register(app_state, &config)) {
+        LOG_INFO("Render system registered with LAST priority, depends on InputSystem and ActionSystem");
+    } else {
+        LOG_ERROR("Failed to register render system");
+    }
 }
 
 void render_system(Entity entity, AppState *app_state) {

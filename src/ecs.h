@@ -43,7 +43,27 @@ typedef void (*SystemPostUpdateFunction)(struct AppState *app_state);
 #define MAX_COMPONENTS MAX_COMPONENTS_COMPILE_TIME
 #define MAX_SYSTEMS MAX_SYSTEMS_COMPILE_TIME
 
-// System types are now defined in appstate.h to avoid circular dependencies
+// System configuration structure for clean registration
+typedef struct {
+    const char *name;                           // System name (required)
+    uint32_t component_mask;                    // Required components (required)
+    SystemFunction function;                    // Main system function (required)
+    SystemPreUpdateFunction pre_update;        // Optional pre-update function
+    SystemPostUpdateFunction post_update;      // Optional post-update function
+    SystemPriority priority;                   // System priority (defaults to NORMAL)
+    const char **dependencies;                 // Optional dependency names (NULL-terminated array)
+} SystemConfig;
+
+// Convenience macro for creating SystemConfig with defaults
+#define SYSTEM_CONFIG(name, mask, func) { \
+    .name = (name), \
+    .component_mask = (mask), \
+    .function = (func), \
+    .pre_update = NULL, \
+    .post_update = NULL, \
+    .priority = SYSTEM_PRIORITY_NORMAL, \
+    .dependencies = NULL \
+}
 
 // ECS Core functions
 void ecs_init(struct AppState *app_state);
@@ -55,7 +75,6 @@ void entity_destroy(struct AppState *app_state, Entity entity);
 bool entity_exists(struct AppState *app_state, Entity entity);
 void * entity_get_component(struct AppState *app_state, Entity entity, uint32_t component_id);
 
-
 // Component management
 bool component_add(struct AppState *app_state, Entity entity, uint32_t component_id, void *data);
 bool component_remove(struct AppState *app_state, Entity entity, uint32_t component_id);
@@ -66,43 +85,12 @@ bool component_has(struct AppState *app_state, Entity entity, uint32_t component
 uint32_t component_register(struct AppState *app_state, const char *name, size_t size);
 uint32_t component_get_id(struct AppState *app_state, const char *name);
 
-// System management - Unified registration API
-// All parameters after 'function' are optional (can be NULL):
-// - pre_update_function, post_update_function: can be NULL
-// - priority: can be NULL for SYSTEM_PRIORITY_NORMAL default
-// - dependencies: can be NULL if no dependencies
-// - dependency_count: should be 0 if dependencies is NULL
-void system_register(struct AppState *app_state,
-                    const char *name, 
-                    uint32_t component_mask,
-                    SystemFunction function, 
-                    SystemPreUpdateFunction pre_update_function,
-                    SystemPostUpdateFunction post_update_function,
-                    SystemPriority *priority,
-                    const char **dependencies,
-                    uint32_t dependency_count);
-
-// Legacy functions - deprecated, use system_register instead
-void system_register_basic(struct AppState *app_state,
-                          const char *name,  uint32_t component_mask,
-                          SystemFunction function, 
-                          SystemPreUpdateFunction pre_update_function, 
-                          SystemPostUpdateFunction post_update_function);
-
-void system_register_with_dependencies(struct AppState *app_state,
-                                      const char *name, uint32_t component_mask,
-                                      SystemFunction function, 
-                                      SystemPreUpdateFunction pre_update_function, 
-                                      SystemPostUpdateFunction post_update_function,
-                                      SystemPriority priority,
-                                      const char **dependencies,
-                                      uint32_t dependency_count);
+// System management - Clean, unified registration API
+bool system_register(struct AppState *app_state, const SystemConfig *config);
 
 bool system_run_all(struct AppState *app_state);
 
 // Utility functions
 int strcmp_ci(const char *s1, const char *s2);
-
-
 
 #endif

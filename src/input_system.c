@@ -112,9 +112,22 @@ void input_system_register(void) {
     }
     
     uint32_t component_mask = (1 << component_get_id(app_state, "Action"));
-    SystemPriority priority = SYSTEM_PRIORITY_NORMAL;
-    system_register(app_state, "InputSystem", component_mask, input_system, NULL, NULL, &priority, NULL, 0);
-    LOG_INFO("Input system registered");
+    
+    SystemConfig config = {
+        .name = "InputSystem",
+        .component_mask = component_mask,
+        .function = input_system,
+        .pre_update = NULL,
+        .post_update = NULL,
+        .priority = SYSTEM_PRIORITY_NORMAL,
+        .dependencies = NULL
+    };
+    
+    if (system_register(app_state, &config)) {
+        LOG_INFO("Input system registered successfully");
+    } else {
+        LOG_ERROR("Failed to register input system");
+    }
 }
 
 void input_system_init(void) {

@@ -128,10 +128,23 @@ void action_system_register(void) {
     uint32_t component_mask = (1 << component_get_id(app_state, "Action")) | (1 << component_get_id(app_state, "Position"));
     
     // Action system depends on input system and should run early
-    const char* dependencies[] = {"InputSystem"};
-    SystemPriority priority = SYSTEM_PRIORITY_EARLY;
-    system_register(app_state, "ActionSystem", component_mask, action_system, NULL, NULL, &priority, dependencies, 1);
-    LOG_INFO("Action system registered with EARLY priority, depends on InputSystem");
+    static const char* dependencies[] = {"InputSystem", NULL};
+    
+    SystemConfig config = {
+        .name = "ActionSystem",
+        .component_mask = component_mask,
+        .function = action_system,
+        .pre_update = NULL,
+        .post_update = NULL,
+        .priority = SYSTEM_PRIORITY_EARLY,
+        .dependencies = dependencies
+    };
+    
+    if (system_register(app_state, &config)) {
+        LOG_INFO("Action system registered with EARLY priority, depends on InputSystem");
+    } else {
+        LOG_ERROR("Failed to register action system");
+    }
 }
 
 void action_system_init(void) {
