@@ -12,171 +12,153 @@
     {
       "id": "fighter",
       "name": "Fighter",
-      "description": "Fighters are warriors who have dedicated their lives to the mastery of weapons and armor. They are the backbone of any adventuring party, capable of dealing and absorbing tremendous amounts of damage in combat.",
-      "detailed_description": "Fighters are specialists in physical combat and warfare. They are trained in the use of all weapons and armor, and can fight effectively with sword and shield, bow, or two-handed weapons. As they gain experience, fighters become increasingly deadly and resilient, able to take on multiple opponents or face down powerful monsters.",
-      "requirements": {},
+      "description": "Fighters include soldiers, guardsmen, barbarian warriors, and anyone else for whom fighting is a way of life. They train in combat, and they generally approach problems head-on, weapon in hand.",
+      "detailed_description": "Not surprisingly, Fighters are the best at fighting of all the classes. They are also the hardiest, able to take more punishment than any other class. Although they are not skilled in the ways of magic, Fighters can nonetheless use many magic items, including but not limited to magical weapons and armor.",
+      "requirements": {
+        "strength": 9
+      },
       "prime_attributes": ["strength"],
       "hit_die": "d8",
-      "armor_allowed": "Any",
-      "weapons_allowed": "Any",
+      "armor_allowed": "Any armor",
+      "weapons_allowed": "Any weapon",
       "special_abilities": [
         {
-          "name": "Weapon Mastery",
-          "description": "Can use any weapon and armor without penalty"
+          "name": "Combat Mastery",
+          "description": "Fighters are the best at fighting of all the classes, with the best attack bonus progression"
         },
         {
-          "name": "Multiple Attacks",
-          "description": "At higher levels, gains additional attacks against weak opponents"
+          "name": "Hardiness",
+          "description": "Fighters are the hardiest class, able to take more punishment than any other class"
         },
         {
-          "name": "Combat Expertise",
-          "description": "Best attack bonus progression of all classes"
+          "name": "Magic Item Use",
+          "description": "Although not skilled in magic, Fighters can use many magic items, including magical weapons and armor"
         }
       ],
-      "restrictions": [
-        "Cannot cast spells",
-        "Limited to physical combat abilities"
-      ],
+      "restrictions": [],
       "spell_progression": null,
       "experience_bonus_requirements": {
         "strength": 13
       },
-      "role": "Tank/Damage Dealer",
-      "starting_equipment": "Chain mail, shield, sword, other weapons"
+      "role": "Warrior",
+      "starting_equipment": "Any armor and weapons"
     },
     {
       "id": "magic_user",
       "name": "Magic-User",
-      "description": "Magic-Users are practitioners of arcane magic, wielding powerful spells that can alter reality itself. Though physically weak, they possess tremendous magical power that grows with experience and study.",
-      "detailed_description": "Magic-Users spend their lives in study of arcane lore, learning to harness and direct magical energies. They begin weak and vulnerable, but as they advance in level, they gain access to increasingly powerful spells that can devastate enemies, transport the party across great distances, or alter the very fabric of reality.",
+      "description": "Magic-Users are those who seek and use knowledge of the arcane. They do magic not as the Cleric does, by faith in a greater power, but rather through insight and understanding.",
+      "detailed_description": "Magic-Users are the worst of all the classes at fighting; hours spent studying massive tomes of magic do not lead a character to become strong or adept with weapons. They are the least hardy, equal to Thieves at lower levels but quickly falling behind.",
       "requirements": {
         "intelligence": 9
       },
       "prime_attributes": ["intelligence"],
       "hit_die": "d4",
       "armor_allowed": "None",
-      "weapons_allowed": "Dagger, staff, dart, oil, torch as weapon",
+      "weapons_allowed": "Dagger and walking staff (or cudgel) only",
       "special_abilities": [
         {
-          "name": "Spell Casting",
-          "description": "Can memorize and cast arcane spells from the Magic-User spell list"
+          "name": "Arcane Spellcasting",
+          "description": "Magic-Users can cast arcane spells through study and understanding"
         },
         {
-          "name": "Spell Research",
-          "description": "Can research new spells and create magical items at higher levels"
+          "name": "Starting Spells",
+          "description": "A first level Magic-User begins play knowing read magic and one other spell of first level, written in a spellbook provided by their master"
         },
         {
-          "name": "Read Magic",
-          "description": "Can read magical writings and scrolls"
-        },
-        {
-          "name": "Familiar",
-          "description": "May gain a magical familiar at higher levels"
+          "name": "Spellbook",
+          "description": "Magic-Users must study their spells from a spellbook to memorize them each day"
         }
       ],
       "restrictions": [
-        "Cannot wear armor (interferes with spell casting)",
-        "Very limited weapon selection",
-        "Physically weak (d4 hit die)"
+        "Magic-Users may not wear armor of any sort nor use a shield as such things interfere with spellcasting",
+        "The only weapons they become proficient with are the dagger and the walking staff (or cudgel)"
       ],
       "spell_progression": {
-        "note": "Gains spell slots based on level, limited spells per day",
+        "note": "Gains spell slots based on level, must memorize spells from spellbook",
         "spell_type": "Arcane",
-        "preparation": "Must memorize spells from spellbook each day"
+        "preparation": "Must study spells from spellbook each day to memorize them"
       },
       "experience_bonus_requirements": {
         "intelligence": 13
       },
-      "role": "Ranged Damage/Utility",
-      "starting_equipment": "Robes, staff, dagger, spellbook, writing materials"
+      "role": "Arcane Spellcaster",
+      "starting_equipment": "Robes, walking staff, dagger, spellbook with read magic and one 1st level spell"
     },
     {
       "id": "cleric",
       "name": "Cleric",
-      "description": "Clerics are divine spellcasters who serve a deity or alignment. They combine martial prowess with divine magic, specializing in healing, protection, and turning undead creatures.",
-      "detailed_description": "Clerics are warriors-priests who serve a particular deity or alignment. They are granted divine magic as a reward for their faith and service. Clerics are especially effective against undead creatures and serve as the primary healers in most adventuring parties. They balance combat ability with divine spellcasting.",
+      "description": "Clerics are those who have devoted themselves to the service of a deity, pantheon or other belief system. Most Clerics spend their time in mundane forms of service such as preaching and ministering in a temple; but there are those who are called to go abroad from the temple and serve their deity in a more direct way, smiting undead monsters and aiding in the battle against evil and chaos.",
+      "detailed_description": "Clerics fight about as well as Thieves, but not as well as Fighters. They are hardier than Thieves, at least at lower levels, as they are accustomed to physical labor that the Thief would deftly avoid. Clerics can cast spells of divine nature starting at 2nd level, and they have the power to Turn the Undead, that is, to drive away undead monsters by means of faith alone.",
       "requirements": {
         "wisdom": 9
       },
       "prime_attributes": ["wisdom"],
       "hit_die": "d6",
-      "armor_allowed": "Any armor, shields",
-      "weapons_allowed": "Any blunt weapons (no edged weapons)",
+      "armor_allowed": "Any armor",
+      "weapons_allowed": "Blunt weapons only (specifically including warhammer, mace, maul, club, quarterstaff, and sling)",
       "special_abilities": [
         {
           "name": "Divine Spellcasting",
-          "description": "Can cast divine spells granted by their deity"
+          "description": "Clerics can cast spells of divine nature starting at 2nd level"
         },
         {
           "name": "Turn Undead",
-          "description": "Can turn away or destroy undead creatures through divine power"
+          "description": "Clerics have the power to Turn the Undead, that is, to drive away undead monsters by means of faith alone"
         },
         {
-          "name": "Healing",
-          "description": "Specializes in healing and protective magic"
-        },
-        {
-          "name": "Divine Favor",
-          "description": "Receives spells directly from their deity through prayer"
+          "name": "Divine Service",
+          "description": "Clerics serve their deity in a direct way, smiting undead monsters and aiding in the battle against evil and chaos"
         }
       ],
       "restrictions": [
-        "Cannot use edged weapons (religious prohibition)",
-        "Must serve a specific deity or alignment",
-        "May lose powers if they stray from their deity's teachings"
+        "Clerics may only use blunt weapons (specifically including warhammer, mace, maul, club, quarterstaff, and sling)"
       ],
       "spell_progression": {
-        "note": "Gains spell slots based on level, limited spells per day",
+        "note": "Gains spell slots starting at 2nd level, spells granted by deity",
         "spell_type": "Divine",
-        "preparation": "Must pray for spells each day"
+        "preparation": "Must pray for spells each day, spells granted by deity"
       },
       "experience_bonus_requirements": {
         "wisdom": 13
       },
-      "role": "Healer/Support",
-      "starting_equipment": "Chain mail, shield, mace or war hammer, holy symbol"
+      "role": "Divine Spellcaster/Healer",
+      "starting_equipment": "Any armor, blunt weapons, holy symbol"
     },
     {
       "id": "thief",
       "name": "Thief",
-      "description": "Thieves are rogues and scoundrels who excel at stealth, trap detection, and skills that others consider disreputable. They are invaluable for their unique abilities and versatility in dangerous situations.",
-      "detailed_description": "Thieves are skilled in the arts of stealth, climbing, trap detection and removal, and opening locks. They are not as skilled in combat as fighters, but they can be deadly when attacking from surprise. Many thieves are criminals, but others use their skills in service of adventuring parties or noble causes.",
+      "description": "Thieves are those who take what they want or need by stealth, disarming traps and picking locks to get to the gold they crave; or \"borrowing\" money from pockets, beltpouches, etc. right under the nose of the \"mark\" without the victim ever knowing.",
+      "detailed_description": "Thieves fight better than Magic-Users but not as well as Fighters. Avoidance of honest work leads Thieves to be less hardy than the other classes, though they do pull ahead of the Magic-Users at higher levels.",
       "requirements": {
         "dexterity": 9
       },
       "prime_attributes": ["dexterity"],
       "hit_die": "d4",
-      "armor_allowed": "Leather armor only",
-      "weapons_allowed": "Any weapon usable in one hand",
+      "armor_allowed": "Leather armor only (no metal armor, no shields)",
+      "weapons_allowed": "Any weapon",
       "special_abilities": [
         {
-          "name": "Thief Skills",
-          "description": "Climb walls, find and remove traps, pick locks, move silently, hide in shadows, pick pockets, hear noise"
+          "name": "Thief Abilities",
+          "description": "Open Locks, Remove Traps, Pick Pockets, Move Silently, Climb Walls, Hide, Listen - all with percentage chances that improve with level"
         },
         {
-          "name": "Backstab",
-          "description": "Can deliver devastating sneak attacks from behind"
+          "name": "Sneak Attack",
+          "description": "Thieves can perform a Sneak Attack any time they are behind an opponent in melee and it is likely the opponent doesn't know the Thief is there. The Sneak Attack is made with a +4 attack bonus and does double damage if it is successful"
         },
         {
-          "name": "Read Languages",
-          "description": "Can attempt to read unknown languages at higher levels"
-        },
-        {
-          "name": "Use Magic Items",
-          "description": "Can use magic items normally restricted to other classes at higher levels"
+          "name": "Stealth Expertise",
+          "description": "Thieves excel at stealth, disarming traps, picking locks, and other skills that others consider disreputable"
         }
       ],
       "restrictions": [
-        "Limited to leather armor only",
-        "Cannot use shields",
-        "Low hit points (d4 hit die)"
+        "Thieves may not wear metal armor as it interferes with stealthy activities, nor may they use shields of any sort. Leather armor is acceptable, however"
       ],
       "spell_progression": null,
       "experience_bonus_requirements": {
         "dexterity": 13
       },
-      "role": "Scout/Utility/Stealth",
-      "starting_equipment": "Leather armor, thieves' tools, dagger, other light weapons"
+      "role": "Scout/Stealth Specialist",
+      "starting_equipment": "Leather armor, thieves' tools, various weapons"
     }
   ]
 } 

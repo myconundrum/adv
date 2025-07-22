@@ -11,68 +11,48 @@
     {
       "id": "human",
       "name": "Human",
-      "description": "Humans are the most common race in most fantasy worlds. They are versatile and ambitious, often serving as the standard by which other races are measured. Humans have no special abilities, but also no restrictions on class choice.",
-      "detailed_description": "Humans are the most adaptable and ambitious race. They have shorter lifespans than most other races, but they make up for it with their determination and versatility. Humans can be found in every profession and walk of life, from humble farmers to mighty kings. They are quick to learn and eager to explore new frontiers.",
+      "description": "Humans come in a broad variety of shapes and sizes. An average Human male in good health stands around six feet tall and weighs about 175 pounds, while females average five feet nine inches and weigh around 145 pounds.",
+      "detailed_description": "Humans come in a broad variety of shapes and sizes; the Game Master must decide what sorts of Humans live in the game world. An average Human male in good health stands around six feet tall and weighs about 175 pounds, while females average five feet nine inches and weigh around 145 pounds. Most Humans live around 75 years.",
       "requirements": {},
       "ability_modifiers": {},
       "special_abilities": [
         {
-          "name": "Versatility",
-          "description": "Humans may be any character class with no restrictions"
-        },
-        {
-          "name": "Ambition",
-          "description": "Humans gain experience 10% faster than other races (optional rule)"
+          "name": "Fast Learning",
+          "description": "Humans learn unusually quickly, gaining a bonus of 10% to all experience points earned"
         }
       ],
       "restrictions": [],
-      "lifespan": "70-100 years",
+      "lifespan": "75 years",
       "size": "Medium",
       "movement": 30,
       "languages": ["Common"]
     },
     {
       "id": "dwarf",
-      "name": "Dwarf",
-      "description": "Dwarves are a sturdy race, shorter and stockier than humans. They are renowned for their skill in smithing and craftsmanship, as well as their resistance to magic and poison. Dwarves have a natural affinity for underground environments.",
-      "detailed_description": "Dwarves are known for their skill in warfare, their ability to withstand physical and magical punishment, their knowledge of the earth's secrets, their hard work, and their capacity for drinking ale. They are a proud and traditional people, with strong clan loyalties and long memories for both friendships and grudges.",
+      "name": "Dwarf", 
+      "description": "Dwarves are a short, stocky race; both male and female Dwarves stand around four feet tall and typically weigh around 120 pounds. Their long hair and thick beards are dark brown, gray or black.",
+      "detailed_description": "Dwarves are a short, stocky race; both male and female Dwarves stand around four feet tall and typically weigh around 120 pounds. Their long hair and thick beards are dark brown, gray or black. They take great pride in their beards, sometimes braiding or forking them. They have a fair to ruddy complexion. Dwarves have stout frames and a strong, muscular build. They are rugged and resilient, with the capacity to endure great hardships. Dwarves are typically practical, stubborn and courageous. They can also be introspective, suspicious and possessive. They have a lifespan of three to four centuries.",
       "requirements": {
         "constitution": 9
       },
-      "ability_modifiers": {
-        "constitution": 1,
-        "charisma": -1
-      },
+      "ability_modifiers": {},
       "special_abilities": [
         {
           "name": "Darkvision",
-          "description": "Can see in complete darkness up to 60 feet, but only in black and white"
-        },
-        {
-          "name": "Magic Resistance",
-          "description": "+4 bonus to saving throws against magic wands, staves, rods, and spells"
-        },
-        {
-          "name": "Poison Resistance", 
-          "description": "+4 bonus to saving throws against poison"
-        },
-        {
-          "name": "Giant Fighting",
-          "description": "+1 to attack rolls against giants, ogres, and similar large creatures"
-        },
-        {
-          "name": "Defensive Training",
-          "description": "Enemies suffer -4 penalty to attack rolls against dwarves due to their defensive training against larger foes"
+          "description": "All Dwarves have Darkvision with a 60' range"
         },
         {
           "name": "Stonework Detection",
-          "description": "1-2 on 1d6 chance to detect sloping passages, new construction, or unsafe walls when within 10 feet"
+          "description": "Able to detect slanting passages, stonework traps, shifting walls and new construction on a roll of 1-2 on 1d6; a search must be performed before this roll may be made"
         }
       ],
       "restrictions": [
-        "Cannot be Magic-Users due to their resistance to magic"
+        "Dwarves may become Clerics, Fighters, or Thieves",
+        "Due to their generally dour dispositions, they may not have a Charisma higher than 17",
+        "They may not employ Large weapons more than four feet in length (specifically, two-handed swords, polearms, and longbows)"
       ],
-      "lifespan": "350-450 years",
+      "saving_throws": "Dwarves save at +4 vs. Death Ray or Poison, Magic Wands, Paralysis or Petrify, and Spells, and at +3 vs. Dragon Breath",
+      "lifespan": "300-400 years",
       "size": "Medium",
       "movement": 20,
       "languages": ["Common", "Dwarvish"]
@@ -80,90 +60,85 @@
     {
       "id": "elf",
       "name": "Elf",
-      "description": "Elves are tall, long-lived humanoids with pointed ears and graceful features. They have a natural affinity for magic and archery, and possess keen senses that allow them to detect hidden doors and passages.",
-      "detailed_description": "Elves are a magical people of otherworldly grace, living in forests and other secluded places. They love nature and magic, art and artistry, music and poetry. Elves can live well over 700 years, giving them a broad perspective on events that might trouble the shorter-lived races more deeply.",
+      "description": "Elves are a slender race, with both males and females standing around five feet tall and weighing around 130 pounds. Most have dark hair, with little or no body or facial hair.",
+      "detailed_description": "Elves are a slender race, with both males and females standing around five feet tall and weighing around 130 pounds. Most have dark hair, with little or no body or facial hair. Their skin is pale, and they have pointed ears and delicate features. Elves are lithe and graceful. They have keen eyesight and hearing. Elves are typically inquisitive, passionate, self-assured, and sometimes haughty. Their typical lifespan is a dozen centuries or more.",
       "requirements": {
         "intelligence": 9
       },
-      "ability_modifiers": {
-        "dexterity": 1,
-        "constitution": -1
-      },
+      "ability_modifiers": {},
       "special_abilities": [
         {
-          "name": "Darkvision", 
-          "description": "Can see in complete darkness up to 60 feet, but only in black and white"
+          "name": "Darkvision",
+          "description": "All Elves have Darkvision with a 60' range"
         },
         {
-          "name": "Keen Senses",
-          "description": "1-2 on 1d6 chance to detect secret or concealed doors when within 10 feet, 1 on 1d6 when just passing by"
+          "name": "Secret Door Detection",
+          "description": "They are able to find secret doors more often than normal (1-2 on 1d6 rather than the usual 1 on 1d6). An Elf is so observant that one has a 1 on 1d6 chance to find a secret door with a cursory look"
         },
         {
-          "name": "Sleep Immunity",
-          "description": "Immune to ghoul paralysis and sleep spells"
+          "name": "Ghoul Immunity",
+          "description": "Elves are immune to the paralyzing attack of ghouls"
         },
         {
-          "name": "Archery Expertise",
-          "description": "+1 to attack rolls with bows and thrown weapons"
+          "name": "Surprise Resistance",
+          "description": "They are less likely to be surprised in combat, reducing the chance of surprise by 1 in 1d6"
         },
         {
-          "name": "Spell Resistance",
-          "description": "+2 bonus to saving throws against charm and similar mental effects"
+          "name": "Hit Die Limitation",
+          "description": "Elves never roll larger than six-sided dice (d6) for hit points"
         }
       ],
       "restrictions": [
-        "May only advance to 4th level as a Fighter",
-        "May only advance to 8th level as a Thief"
+        "Elves may become Clerics, Fighters, Magic-Users or Thieves",
+        "They are also allowed to combine the classes of Fighter and Magic-User, and of Magic-User and Thief",
+        "Due to their generally delicate nature, they may not have a Constitution higher than 17",
+        "Elves never roll larger than six-sided dice (d6) for hit points"
       ],
-      "lifespan": "600-750 years",
-      "size": "Medium", 
+      "saving_throws": "Elves save at +1 vs. Paralysis or Petrify, and +2 vs. Magic Wands and Spells",
+      "lifespan": "1200+ years",
+      "size": "Medium",
       "movement": 30,
       "languages": ["Common", "Elvish"]
     },
     {
       "id": "halfling",
       "name": "Halfling",
-      "description": "Halflings are small, cheerful folk who love comfort and the simple pleasures of life. They are naturally stealthy and have remarkable luck, making them excellent scouts and adventurers despite their peaceful nature.",
-      "detailed_description": "Halflings are an affable and cheerful people. They cherish the bonds of family and friendship as well as the comforts of hearth and home, harboring few dreams of gold or glory. Even adventurous halflings usually venture into the world for reasons of community, friendship, wanderlust, or curiosity.",
+      "description": "Halflings are small, slightly stocky folk who stand around three feet tall and weigh about 60 pounds. They have curly brown hair on their heads and feet, but rarely have facial hair.",
+      "detailed_description": "Halflings are small, slightly stocky folk who stand around three feet tall and weigh about 60 pounds. They have curly brown hair on their heads and feet, but rarely have facial hair. They are usually fair skinned, often with ruddy cheeks. Halflings are remarkably rugged for their small size. They are dexterous and nimble, capable of moving quietly and remaining very still. They usually go barefoot. Halflings are typically outgoing, unassuming and good-natured. They live about a hundred years.",
       "requirements": {
         "dexterity": 9
       },
-      "ability_modifiers": {
-        "dexterity": 1,
-        "strength": -1
-      },
+      "ability_modifiers": {},
       "special_abilities": [
         {
-          "name": "Small Size",
-          "description": "+1 Armor Class bonus due to small size"
+          "name": "Missile Accuracy",
+          "description": "Halflings are unusually accurate with all sorts of ranged weapons, gaining a +1 attack bonus when employing them"
         },
         {
-          "name": "Missile Attack Bonus",
-          "description": "+1 to attack rolls with all missile weapons"
+          "name": "Defensive Agility",
+          "description": "When attacked in melee by creatures larger than man-sized, Halflings gain a +2 bonus to their Armor Class"
+        },
+        {
+          "name": "Quick Reflexes",
+          "description": "Halflings are quick-witted, adding +1 to Initiative die rolls"
         },
         {
           "name": "Hiding Ability",
-          "description": "Can hide in wilderness with 90% success rate, or 2-in-6 in dungeons"
+          "description": "In their preferred forest terrain, they are able to hide very effectively; so long as they remain still there is only a 10% chance they will be detected. Even indoors, in dungeons or in non-preferred terrain they are able to hide such that there is only a 30% chance of detection. Note that a Halfling Thief will roll only once, using either the Thief ability or the Halfling ability, whichever is better"
         },
         {
-          "name": "Lucky",
-          "description": "+1 bonus to all saving throws"
-        },
-        {
-          "name": "Brave",
-          "description": "+4 bonus to saving throws against fear effects"
-        },
-        {
-          "name": "Keen Hearing",
-          "description": "2-in-6 chance to hear noise (as a 1st level Thief)"
+          "name": "Hit Die Limitation",
+          "description": "Halflings never roll larger than six-sided dice (d6) for hit points regardless of class"
         }
       ],
       "restrictions": [
-        "May only advance to 4th level as a Fighter",
-        "May only advance to 6th level as a Cleric",
-        "Cannot be Magic-Users"
+        "Halflings may become Clerics, Fighters or Thieves",
+        "Due to their small stature, they may not have a Strength higher than 17",
+        "Halflings never roll larger than six-sided dice (d6) for hit points regardless of class",
+        "Halflings may not use Large weapons, and must wield Medium weapons with both hands"
       ],
-      "lifespan": "150-200 years",
+      "saving_throws": "Halflings save at +4 vs. Death Ray or Poison, Magic Wands, Paralysis or Petrify, and Spells, and at +3 vs. Dragon Breath",
+      "lifespan": "100 years",
       "size": "Small",
       "movement": 20,
       "languages": ["Common", "Halfling"]
