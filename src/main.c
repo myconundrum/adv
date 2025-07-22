@@ -24,7 +24,7 @@ static void cleanup_resources(void) {
         // Clean up view systems before render system (which calls TTF_Quit)
         playerview_cleanup();
         statusview_cleanup();
-        messageview_cleanup();
+        messageview_cleanup(as);
         
         render_system_cleanup(as);
         
@@ -70,7 +70,7 @@ static int init_game_systems(void) {
     
     // Initialize message systems
     messages_init(as);
-    messageview_init();
+    messageview_init(as);
 
     // Initialize and register input system (first - no dependencies)
     input_system_init();

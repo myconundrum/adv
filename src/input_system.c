@@ -41,7 +41,7 @@ void input_system(Entity entity, AppState *app_state) {
     // Handle message window toggle hotkey (Ctrl+M)
     if (keystate[SDL_SCANCODE_M] && (SDL_GetModState() & KMOD_CTRL)) {
         if (!key_was_down[SDL_SCANCODE_M]) {
-            messageview_toggle();
+            messageview_toggle(app_state);
         }
         key_was_down[SDL_SCANCODE_M] = true;
         return;
@@ -50,7 +50,7 @@ void input_system(Entity entity, AppState *app_state) {
     }
     
     // Only process movement if message window doesn't have focus
-    if (messageview_has_focus()) {
+    if (messageview_has_focus(app_state)) {
         return;
     }
     

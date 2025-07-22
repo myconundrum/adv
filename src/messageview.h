@@ -31,51 +31,48 @@ typedef struct {
     int window_height;
     
     // Scrolling state
-    int scroll_position; // Top line being displayed
-    int lines_per_page;  // How many lines fit in the window
-    int total_lines;     // Total number of wrapped lines
+    int scroll_position;
+    int lines_per_page;
+    int total_lines;
     
-    // Scrollbar state
+    // UI interaction state
     bool scrollbar_dragging;
     int scrollbar_drag_offset;
     
-    // Input handling
+    // Initialization flag
     bool initialized;
 } MessageViewState;
 
-// Global message view state
-extern MessageViewState g_message_view;
-
-// Initialization and cleanup
-bool messageview_init(void);
-void messageview_cleanup(void);
-
-// Window management
-void messageview_show(void);
-void messageview_hide(void);
-void messageview_toggle(void);
-bool messageview_is_visible(void);
-bool messageview_has_focus(void);
-
 // Forward declaration
 struct AppState;
+
+// Core functions 
+bool messageview_init(struct AppState *app_state);
+void messageview_cleanup(struct AppState *app_state);
+
+// Window management
+void messageview_show(struct AppState *app_state);
+void messageview_hide(struct AppState *app_state);
+void messageview_toggle(struct AppState *app_state);
+bool messageview_is_visible(struct AppState *app_state);
+bool messageview_has_focus(struct AppState *app_state);
 
 // Rendering
 void messageview_render(SDL_Renderer *main_renderer, struct AppState *app_state);
 
 // Event handling
-bool messageview_handle_event(SDL_Event *event);
+bool messageview_handle_event(SDL_Event *event, struct AppState *app_state);
 
 // Scrolling
-void messageview_scroll_up(int lines);
-void messageview_scroll_down(int lines);
-void messageview_scroll_to_bottom(void);
-void messageview_scroll_to_top(void);
+void messageview_scroll_up(int lines, struct AppState *app_state);
+void messageview_scroll_down(int lines, struct AppState *app_state);
+void messageview_scroll_to_bottom(struct AppState *app_state);
+void messageview_scroll_to_top(struct AppState *app_state);
 
 // Internal helper functions
 void messageview_update_layout(struct AppState *app_state);
-void messageview_draw_scrollbar(void);
-bool messageview_point_in_scrollbar(int x, int y);
-int messageview_scrollbar_position_to_line(int y);
+void messageview_draw_scrollbar(struct AppState *app_state);
+bool messageview_point_in_scrollbar(int x, int y, struct AppState *app_state);
+int messageview_scrollbar_position_to_line(int y, struct AppState *app_state);
 
 #endif 
