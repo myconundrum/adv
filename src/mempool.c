@@ -1,12 +1,10 @@
 #include "mempool.h"
 #include "log.h"
 #include "error.h"
+#include "appstate.h"
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-
-// Global memory pool instance
-static MemoryPool g_mempool = {0};
 
 // Size class configurations (size in bytes, blocks per chunk)
 static const struct {
@@ -24,11 +22,11 @@ static const struct {
 };
 
 // Forward declarations
-static bool allocate_new_chunk(PoolSizeClass class);
-static PoolBlock* get_block_from_pool(PoolSizeClass class);
-static void return_block_to_pool(PoolBlock *block);
-static bool is_valid_pool_pointer(void *ptr);
-static void update_statistics(PoolSizeClass class, bool allocating);
+static bool allocate_new_chunk(PoolSizeClass class, struct AppState *app_state);
+static PoolBlock* get_block_from_pool(PoolSizeClass class, struct AppState *app_state);
+static void return_block_to_pool(PoolBlock *block, struct AppState *app_state);
+static bool is_valid_pool_pointer(void *ptr, struct AppState *app_state);
+static void update_statistics(PoolSizeClass class, bool allocating, struct AppState *app_state);
 
 // Get the appropriate size class for a given size
 PoolSizeClass mempool_get_size_class(size_t size) {
@@ -54,23 +52,23 @@ size_t mempool_get_class_size(PoolSizeClass class) {
 }
 
 // Initialize the memory pool system
-bool mempool_init(void) {
-    if (g_mempool.initialized) {
+bool mempool_init(struct AppState *app_state) {
+    if (app_state->mempool.initialized) {
         LOG_WARN("Memory pool already initialized");
         return true;
     }
     
-    memset(&g_mempool, 0, sizeof(MemoryPool));
+    memset(&app_state->mempool, 0, sizeof(MemoryPool));
     
     // Set default configuration
-    g_mempool.initial_chunks_per_pool = 1;
-    g_mempool.max_chunks_per_pool = 64;
-    g_mempool.enable_corruption_detection = true;
-    g_mempool.enable_statistics = true;
+    app_state->mempool.initial_chunks_per_pool = 1;
+    app_state->mempool.max_chunks_per_pool = 64;
+    app_state->mempool.enable_corruption_detection = true;
+    app_state->mempool.enable_statistics = true;
     
     // Initialize each pool size class
     for (int i = 0; i < POOL_SIZE_COUNT; i++) {
-        PoolSizeInfo *pool = &g_mempool.pools[i];
+        PoolSizeInfo *pool = &app_state->mempool.pools[i];
         pool->block_size = SIZE_CLASS_CONFIG[i].size;
         pool->blocks_per_chunk = SIZE_CLASS_CONFIG[i].blocks_per_chunk;
         pool->free_list = NULL;
@@ -81,32 +79,32 @@ bool mempool_init(void) {
         pool->chunk_count = 0;
         
         // Allocate initial chunk for each size class
-        if (!allocate_new_chunk((PoolSizeClass)i)) {
+        if (!allocate_new_chunk((PoolSizeClass)i, app_state)) {
             LOG_ERROR("Failed to allocate initial chunk for size class %d", i);
-            mempool_cleanup();
+            mempool_cleanup(app_state);
             return false;
         }
     }
     
-    g_mempool.initialized = true;
+    app_state->mempool.initialized = true;
     LOG_INFO("Memory pool initialized with %d size classes", POOL_SIZE_COUNT);
     return true;
 }
 
 // Cleanup the memory pool system
-void mempool_cleanup(void) {
-    if (!g_mempool.initialized) {
+void mempool_cleanup(struct AppState *app_state) {
+    if (!app_state->mempool.initialized) {
         return;
     }
     
     // Print final statistics
-    if (g_mempool.enable_statistics) {
-        mempool_print_stats();
+    if (app_state->mempool.enable_statistics) {
+        mempool_print_stats(app_state);
     }
     
     // Free all chunks
     for (int i = 0; i < POOL_SIZE_COUNT; i++) {
-        PoolSizeInfo *pool = &g_mempool.pools[i];
+        PoolSizeInfo *pool = &app_state->mempool.pools[i];
         PoolChunk *chunk = pool->chunks;
         
         while (chunk) {
@@ -117,23 +115,23 @@ void mempool_cleanup(void) {
         }
     }
     
-    memset(&g_mempool, 0, sizeof(MemoryPool));
+    memset(&app_state->mempool, 0, sizeof(MemoryPool));
     LOG_INFO("Memory pool cleaned up");
 }
 
 // Check if memory pool is initialized
-bool mempool_is_initialized(void) {
-    return g_mempool.initialized;
+bool mempool_is_initialized(struct AppState *app_state) {
+    return app_state->mempool.initialized;
 }
 
 // Allocate a new chunk for a specific size class
-static bool allocate_new_chunk(PoolSizeClass class) {
+static bool allocate_new_chunk(PoolSizeClass class, struct AppState *app_state) {
     if (class >= POOL_SIZE_COUNT) return false;
     
-    PoolSizeInfo *pool = &g_mempool.pools[class];
+    PoolSizeInfo *pool = &app_state->mempool.pools[class];
     
     // Check if we've hit the maximum chunk limit
-    if (pool->chunk_count >= g_mempool.max_chunks_per_pool) {
+    if (pool->chunk_count >= app_state->mempool.max_chunks_per_pool) {
         LOG_DEBUG("Hit maximum chunk limit for size class %d (%u chunks), allowing fallback", 
                   class, pool->chunk_count);
         return false;
@@ -182,19 +180,19 @@ static bool allocate_new_chunk(PoolSizeClass class) {
     }
     
     LOG_DEBUG("Allocated new chunk for size class %d: %u blocks, %zu bytes (chunk %u/%u)", 
-              class, block_count, chunk_size, pool->chunk_count, g_mempool.max_chunks_per_pool);
+              class, block_count, chunk_size, pool->chunk_count, app_state->mempool.max_chunks_per_pool);
     return true;
 }
 
 // Get a block from the specified pool
-static PoolBlock* get_block_from_pool(PoolSizeClass class) {
+static PoolBlock* get_block_from_pool(PoolSizeClass class, struct AppState *app_state) {
     if (class >= POOL_SIZE_COUNT) return NULL;
     
-    PoolSizeInfo *pool = &g_mempool.pools[class];
+    PoolSizeInfo *pool = &app_state->mempool.pools[class];
     
     // If no free blocks, try to allocate a new chunk
     if (!pool->free_list) {
-        if (!allocate_new_chunk(class)) {
+        if (!allocate_new_chunk(class, app_state)) {
             return NULL;
         }
     }
@@ -227,7 +225,7 @@ static PoolBlock* get_block_from_pool(PoolSizeClass class) {
     // Set up block header
     block->next = NULL;
     block->size_class = class;
-    if (g_mempool.enable_corruption_detection) {
+    if (app_state->mempool.enable_corruption_detection) {
         block->magic = POOL_BLOCK_MAGIC;
     }
     
@@ -235,7 +233,7 @@ static PoolBlock* get_block_from_pool(PoolSizeClass class) {
 }
 
 // Return a block to its pool
-static void return_block_to_pool(PoolBlock *block) {
+static void return_block_to_pool(PoolBlock *block, struct AppState *app_state) {
     if (!block) return;
     
     PoolSizeClass class = block->size_class;
@@ -245,13 +243,13 @@ static void return_block_to_pool(PoolBlock *block) {
     }
     
     // Corruption detection
-    if (g_mempool.enable_corruption_detection && block->magic != POOL_BLOCK_MAGIC) {
+    if (app_state->mempool.enable_corruption_detection && block->magic != POOL_BLOCK_MAGIC) {
         LOG_ERROR("Block corruption detected: expected magic 0x%08X, got 0x%08X", 
                   POOL_BLOCK_MAGIC, block->magic);
         return;
     }
     
-    PoolSizeInfo *pool = &g_mempool.pools[class];
+    PoolSizeInfo *pool = &app_state->mempool.pools[class];
     
     // Update statistics
     pool->used_blocks--;
@@ -276,14 +274,14 @@ static void return_block_to_pool(PoolBlock *block) {
 }
 
 // Check if a pointer is from the pool
-static bool is_valid_pool_pointer(void *ptr) {
-    if (!ptr || !g_mempool.initialized) return false;
+static bool is_valid_pool_pointer(void *ptr, struct AppState *app_state) {
+    if (!ptr || !app_state->mempool.initialized) return false;
     
     PoolBlock *block = (PoolBlock*)((uint8_t*)ptr - sizeof(PoolBlock));
     
     // Check if this block is within any of our chunks
     for (int i = 0; i < POOL_SIZE_COUNT; i++) {
-        PoolChunk *chunk = g_mempool.pools[i].chunks;
+        PoolChunk *chunk = app_state->mempool.pools[i].chunks;
         while (chunk) {
             uint8_t *chunk_start = chunk->memory;
             uint8_t *chunk_end = chunk_start + chunk->size;
@@ -299,29 +297,29 @@ static bool is_valid_pool_pointer(void *ptr) {
 }
 
 // Update allocation statistics
-static void update_statistics(PoolSizeClass class, bool allocating) {
-    if (!g_mempool.enable_statistics) return;
+static void update_statistics(PoolSizeClass class, bool allocating, struct AppState *app_state) {
+    if (!app_state->mempool.enable_statistics) return;
     
     if (allocating) {
-        g_mempool.total_allocations++;
-        g_mempool.bytes_allocated += mempool_get_class_size(class);
+        app_state->mempool.total_allocations++;
+        app_state->mempool.bytes_allocated += mempool_get_class_size(class);
     } else {
-        g_mempool.total_deallocations++;
-        g_mempool.bytes_deallocated += mempool_get_class_size(class);
+        app_state->mempool.total_deallocations++;
+        app_state->mempool.bytes_deallocated += mempool_get_class_size(class);
     }
     
     // Update peak memory usage
-    size_t current_usage = mempool_get_total_memory_usage();
-    if (current_usage > g_mempool.peak_memory_usage) {
-        g_mempool.peak_memory_usage = current_usage;
+    size_t current_usage = mempool_get_total_memory_usage(app_state);
+    if (current_usage > app_state->mempool.peak_memory_usage) {
+        app_state->mempool.peak_memory_usage = current_usage;
     }
 }
 
 // Core allocation function
-void* pool_malloc(size_t size) {
-    if (!g_mempool.initialized) {
+void* pool_malloc(size_t size, struct AppState *app_state) {
+    if (!app_state->mempool.initialized) {
         LOG_DEBUG("Memory pool not initialized, falling back to malloc");
-        g_mempool.fallback_allocations++;
+        app_state->mempool.fallback_allocations++;
         return malloc(size);
     }
     
@@ -331,30 +329,30 @@ void* pool_malloc(size_t size) {
     
     // If size is too large for pool, fall back to malloc
     if (class >= POOL_SIZE_COUNT) {
-        g_mempool.fallback_allocations++;
+        app_state->mempool.fallback_allocations++;
         return malloc(size);
     }
     
-    PoolBlock *block = get_block_from_pool(class);
+    PoolBlock *block = get_block_from_pool(class, app_state);
     if (!block) {
         LOG_DEBUG("Pool exhausted for size class %d, falling back to malloc (fallback #%u)", 
-                  class, g_mempool.fallback_allocations + 1);
-        g_mempool.fallback_allocations++;
+                  class, app_state->mempool.fallback_allocations + 1);
+        app_state->mempool.fallback_allocations++;
         return malloc(size);
     }
     
-    update_statistics(class, true);
+    update_statistics(class, true, app_state);
     
     // Return pointer to user data (after the header)
     return (uint8_t*)block + sizeof(PoolBlock);
 }
 
 // Core deallocation function
-void pool_free(void *ptr) {
+void pool_free(void *ptr, struct AppState *app_state) {
     if (!ptr) return;
     
     // Check if this pointer is from our pool
-    if (!is_valid_pool_pointer(ptr)) {
+    if (!is_valid_pool_pointer(ptr, app_state)) {
         // Not from pool, use regular free
         free(ptr);
         return;
@@ -363,14 +361,14 @@ void pool_free(void *ptr) {
     // Get the block header
     PoolBlock *block = (PoolBlock*)((uint8_t*)ptr - sizeof(PoolBlock));
     
-    update_statistics(block->size_class, false);
-    return_block_to_pool(block);
+    update_statistics(block->size_class, false, app_state);
+    return_block_to_pool(block, app_state);
 }
 
 // Calloc implementation
-void* pool_calloc(size_t count, size_t size) {
+void* pool_calloc(size_t count, size_t size, struct AppState *app_state) {
     size_t total_size = count * size;
-    void *ptr = pool_malloc(total_size);
+    void *ptr = pool_malloc(total_size, app_state);
     if (ptr) {
         memset(ptr, 0, total_size);
     }
@@ -378,15 +376,15 @@ void* pool_calloc(size_t count, size_t size) {
 }
 
 // Realloc implementation
-void* pool_realloc(void *ptr, size_t new_size) {
-    if (!ptr) return pool_malloc(new_size);
+void* pool_realloc(void *ptr, size_t new_size, struct AppState *app_state) {
+    if (!ptr) return pool_malloc(new_size, app_state);
     if (new_size == 0) {
-        pool_free(ptr);
+        pool_free(ptr, app_state);
         return NULL;
     }
     
     // If not from pool, use regular realloc
-    if (!is_valid_pool_pointer(ptr)) {
+    if (!is_valid_pool_pointer(ptr, app_state)) {
         return realloc(ptr, new_size);
     }
     
@@ -401,7 +399,7 @@ void* pool_realloc(void *ptr, size_t new_size) {
     }
     
     // Allocate new memory
-    void *new_ptr = pool_malloc(new_size);
+    void *new_ptr = pool_malloc(new_size, app_state);
     if (!new_ptr) return NULL;
     
     // Copy old data
@@ -410,44 +408,44 @@ void* pool_realloc(void *ptr, size_t new_size) {
     memcpy(new_ptr, ptr, copy_size);
     
     // Free old memory
-    pool_free(ptr);
+    pool_free(ptr, app_state);
     
     return new_ptr;
 }
 
 // Expand a specific pool
-bool mempool_expand_pool(PoolSizeClass class) {
-    if (!g_mempool.initialized || class >= POOL_SIZE_COUNT) {
+bool mempool_expand_pool(PoolSizeClass class, struct AppState *app_state) {
+    if (!app_state->mempool.initialized || class >= POOL_SIZE_COUNT) {
         return false;
     }
     
-    return allocate_new_chunk(class);
+    return allocate_new_chunk(class, app_state);
 }
 
 // Print basic statistics
-void mempool_print_stats(void) {
-    if (!g_mempool.initialized) {
+void mempool_print_stats(struct AppState *app_state) {
+    if (!app_state->mempool.initialized) {
         LOG_INFO("Memory pool not initialized");
         return;
     }
     
     LOG_INFO("=== Memory Pool Statistics ===");
-    LOG_INFO("Total allocations: %llu", (unsigned long long)g_mempool.total_allocations);
-    LOG_INFO("Total deallocations: %llu", (unsigned long long)g_mempool.total_deallocations);
-    LOG_INFO("Bytes allocated: %llu", (unsigned long long)g_mempool.bytes_allocated);
-    LOG_INFO("Bytes deallocated: %llu", (unsigned long long)g_mempool.bytes_deallocated);
-    LOG_INFO("Peak memory usage: %llu bytes", (unsigned long long)g_mempool.peak_memory_usage);
-    LOG_INFO("Fallback allocations: %u", g_mempool.fallback_allocations);
-    LOG_INFO("Current memory usage: %zu bytes", mempool_get_total_memory_usage());
+    LOG_INFO("Total allocations: %llu", (unsigned long long)app_state->mempool.total_allocations);
+    LOG_INFO("Total deallocations: %llu", (unsigned long long)app_state->mempool.total_deallocations);
+    LOG_INFO("Bytes allocated: %llu", (unsigned long long)app_state->mempool.bytes_allocated);
+    LOG_INFO("Bytes deallocated: %llu", (unsigned long long)app_state->mempool.bytes_deallocated);
+    LOG_INFO("Peak memory usage: %llu bytes", (unsigned long long)app_state->mempool.peak_memory_usage);
+    LOG_INFO("Fallback allocations: %u", app_state->mempool.fallback_allocations);
+    LOG_INFO("Current memory usage: %zu bytes", mempool_get_total_memory_usage(app_state));
 }
 
 // Print detailed statistics
-void mempool_print_detailed_stats(void) {
-    mempool_print_stats();
+void mempool_print_detailed_stats(struct AppState *app_state) {
+    mempool_print_stats(app_state);
     
     LOG_INFO("=== Per-Size-Class Statistics ===");
     for (int i = 0; i < POOL_SIZE_COUNT; i++) {
-        PoolSizeInfo *pool = &g_mempool.pools[i];
+        PoolSizeInfo *pool = &app_state->mempool.pools[i];
         LOG_INFO("Size class %d (%u bytes): %u/%u blocks used, %u chunks, peak: %u",
                  i, pool->block_size, pool->used_blocks, pool->total_blocks,
                  pool->chunk_count, pool->peak_used);
@@ -455,37 +453,37 @@ void mempool_print_detailed_stats(void) {
 }
 
 // Get total memory usage
-size_t mempool_get_total_memory_usage(void) {
-    if (!g_mempool.initialized) return 0;
+size_t mempool_get_total_memory_usage(struct AppState *app_state) {
+    if (!app_state->mempool.initialized) return 0;
     
     size_t total = 0;
     for (int i = 0; i < POOL_SIZE_COUNT; i++) {
-        PoolSizeInfo *pool = &g_mempool.pools[i];
+        PoolSizeInfo *pool = &app_state->mempool.pools[i];
         total += pool->used_blocks * pool->block_size;
     }
     return total;
 }
 
 // Get free memory
-size_t mempool_get_free_memory(void) {
-    if (!g_mempool.initialized) return 0;
+size_t mempool_get_free_memory(struct AppState *app_state) {
+    if (!app_state->mempool.initialized) return 0;
     
     size_t total = 0;
     for (int i = 0; i < POOL_SIZE_COUNT; i++) {
-        PoolSizeInfo *pool = &g_mempool.pools[i];
+        PoolSizeInfo *pool = &app_state->mempool.pools[i];
         total += (pool->total_blocks - pool->used_blocks) * pool->block_size;
     }
     return total;
 }
 
 // Validate pool integrity
-bool mempool_validate_integrity(void) {
-    if (!g_mempool.initialized) return false;
+bool mempool_validate_integrity(struct AppState *app_state) {
+    if (!app_state->mempool.initialized) return false;
     
     bool valid = true;
     
     for (int i = 0; i < POOL_SIZE_COUNT; i++) {
-        PoolSizeInfo *pool = &g_mempool.pools[i];
+        PoolSizeInfo *pool = &app_state->mempool.pools[i];
         
         // Check that used_blocks doesn't exceed total_blocks
         if (pool->used_blocks > pool->total_blocks) {
@@ -495,7 +493,7 @@ bool mempool_validate_integrity(void) {
         }
         
         // Validate free list if corruption detection is enabled
-        if (g_mempool.enable_corruption_detection) {
+        if (app_state->mempool.enable_corruption_detection) {
             PoolBlock *block = pool->free_list;
             uint32_t free_count = 0;
             
@@ -524,20 +522,20 @@ bool mempool_validate_integrity(void) {
 }
 
 // Configuration functions
-void mempool_set_chunk_count(uint32_t initial_chunks, uint32_t max_chunks) {
-    if (g_mempool.initialized) {
+void mempool_set_chunk_limits(struct AppState *app_state, uint32_t initial_chunks, uint32_t max_chunks) {
+    if (app_state->mempool.initialized) {
         LOG_WARN("Cannot change chunk count after initialization");
         return;
     }
     
-    g_mempool.initial_chunks_per_pool = initial_chunks;
-    g_mempool.max_chunks_per_pool = max_chunks;
+    app_state->mempool.initial_chunks_per_pool = initial_chunks;
+    app_state->mempool.max_chunks_per_pool = max_chunks;
 }
 
-void mempool_enable_corruption_detection(bool enable) {
-    g_mempool.enable_corruption_detection = enable;
+void mempool_set_corruption_detection(struct AppState *app_state, bool enable) {
+    app_state->mempool.enable_corruption_detection = enable;
 }
 
-void mempool_enable_statistics(bool enable) {
-    g_mempool.enable_statistics = enable;
+void mempool_set_statistics(struct AppState *app_state, bool enable) {
+    app_state->mempool.enable_statistics = enable;
 } 

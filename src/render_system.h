@@ -2,6 +2,9 @@
 #define RENDER_SYSTEM_H
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include "ecs.h"
 
 // Forward declaration
@@ -41,6 +44,11 @@ void render_system_cleanup(struct AppState *app_state);
 
 // Get the renderer (for other systems that might need it)
 SDL_Renderer* render_system_get_renderer(struct AppState *app_state);
+
+// Font management - centralized font access for all view systems
+TTF_Font* render_system_get_small_font(struct AppState *app_state);   // 14pt
+TTF_Font* render_system_get_medium_font(struct AppState *app_state);  // 16pt  
+TTF_Font* render_system_get_large_font(struct AppState *app_state);   // 18pt
 
 // Register the rendering system with the ECS
 void render_system_register(void);

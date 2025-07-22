@@ -4,6 +4,7 @@
 #include "field.h"
 #include "log.h"
 #include "render_system.h"
+#include "appstate.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <stdlib.h>
@@ -12,13 +13,12 @@
 
 // Initialize random seed (call once at startup)
 static bool random_initialized = false;
-static TTF_Font *g_char_font = NULL;
 
 // Helper function to render text at a specific position
-static void render_text_at_position(SDL_Renderer *renderer, const char *text, int x, int y, SDL_Color color) {
-    if (!g_char_font || !text) return;
+static void render_text_at_position(SDL_Renderer *renderer, TTF_Font *font, const char *text, int x, int y, SDL_Color color) {
+    if (!font || !text) return;
     
-    SDL_Surface *text_surface = TTF_RenderText_Solid(g_char_font, text, color);
+    SDL_Surface *text_surface = TTF_RenderText_Solid(font, text, color);
     if (text_surface) {
         SDL_Texture *text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
         if (text_texture) {
@@ -58,36 +58,13 @@ void character_creation_init(CharacterCreation *creation) {
     strcpy(creation->name, "Adventurer"); // Default name
     
     // Load font if not already loaded
-    if (!g_char_font) {
-        const char* font_paths[] = {
-            "/System/Library/Fonts/Monaco.ttf",
-            "/System/Library/Fonts/Courier.ttc",
-            "/System/Library/Fonts/Menlo.ttc",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
-            NULL
-        };
-        
-        for (int i = 0; font_paths[i] != NULL; i++) {
-            g_char_font = TTF_OpenFont(font_paths[i], 16);
-            if (g_char_font) {
-                break;
-            }
-        }
-        
-        if (!g_char_font) {
-            LOG_WARN("Could not load font for character creation");
-        }
-    }
+    // Font is now managed by the render system
 }
 
 void character_creation_cleanup(CharacterCreation *creation) {
     (void)creation;
     
-    if (g_char_font) {
-        TTF_CloseFont(g_char_font);
-        g_char_font = NULL;
-    }
+    // g_char_font is removed, so this block is no longer needed.
 }
 
 // Roll all ability scores
@@ -406,6 +383,8 @@ void character_creation_handle_input(CharacterCreation *creation, int key) {
 
 // Character creation UI rendering
 void character_creation_render(CharacterCreation *creation, SDL_Renderer *renderer) {
+    AppState *app_state = appstate_get();
+    TTF_Font *medium_font = render_system_get_medium_font(app_state);
     if (!creation || !renderer) return;
     
     // Clear screen
@@ -421,67 +400,67 @@ void character_creation_render(CharacterCreation *creation, SDL_Renderer *render
     SDL_Color gray = {128, 128, 128, 255};
     
     // Title
-    render_text_at_position(renderer, "CHARACTER CREATION - Basic Fantasy RPG", 250, 30, white);
+    render_text_at_position(renderer, medium_font, "CHARACTER CREATION - Basic Fantasy RPG", 250, 30, white);
     
     if (!creation->stats_rolled) {
         // Initial state - waiting for stat roll
-        render_text_at_position(renderer, "Press SPACE or RETURN to roll your ability scores", 250, 150, yellow);
-        render_text_at_position(renderer, "You will roll 3D6 for each of the six abilities:", 250, 200, white);
-        render_text_at_position(renderer, "Strength, Dexterity, Constitution,", 250, 250, gray);
-        render_text_at_position(renderer, "Intelligence, Wisdom, and Charisma", 250, 280, gray);
+        render_text_at_position(renderer, medium_font, "Press SPACE or RETURN to roll your ability scores", 250, 150, yellow);
+        render_text_at_position(renderer, medium_font, "You will roll 3D6 for each of the six abilities:", 250, 200, white);
+        render_text_at_position(renderer, medium_font, "Strength, Dexterity, Constitution,", 250, 250, gray);
+        render_text_at_position(renderer, medium_font, "Intelligence, Wisdom, and Charisma", 250, 280, gray);
     } else {
         // Show rolled stats
         char stat_text[64];
         int y_start = 120;
         int line_height = 25;
         
-        render_text_at_position(renderer, "Your Ability Scores:", 50, 80, white);
+        render_text_at_position(renderer, medium_font, "Your Ability Scores:", 50, 80, white);
         
         snprintf(stat_text, sizeof(stat_text), "Strength:     %2d (%+d)", 
                 creation->scores.strength, character_creation_get_ability_modifier(creation->scores.strength));
-        render_text_at_position(renderer, stat_text, 50, y_start, white);
+        render_text_at_position(renderer, medium_font, stat_text, 50, y_start, white);
         
         snprintf(stat_text, sizeof(stat_text), "Dexterity:    %2d (%+d)", 
                 creation->scores.dexterity, character_creation_get_ability_modifier(creation->scores.dexterity));
-        render_text_at_position(renderer, stat_text, 50, y_start + line_height, white);
+        render_text_at_position(renderer, medium_font, stat_text, 50, y_start + line_height, white);
         
         snprintf(stat_text, sizeof(stat_text), "Constitution: %2d (%+d)", 
                 creation->scores.constitution, character_creation_get_ability_modifier(creation->scores.constitution));
-        render_text_at_position(renderer, stat_text, 50, y_start + 2 * line_height, white);
+        render_text_at_position(renderer, medium_font, stat_text, 50, y_start + 2 * line_height, white);
         
         snprintf(stat_text, sizeof(stat_text), "Intelligence: %2d (%+d)", 
                 creation->scores.intelligence, character_creation_get_ability_modifier(creation->scores.intelligence));
-        render_text_at_position(renderer, stat_text, 50, y_start + 3 * line_height, white);
+        render_text_at_position(renderer, medium_font, stat_text, 50, y_start + 3 * line_height, white);
         
         snprintf(stat_text, sizeof(stat_text), "Wisdom:       %2d (%+d)", 
                 creation->scores.wisdom, character_creation_get_ability_modifier(creation->scores.wisdom));
-        render_text_at_position(renderer, stat_text, 50, y_start + 4 * line_height, white);
+        render_text_at_position(renderer, medium_font, stat_text, 50, y_start + 4 * line_height, white);
         
         snprintf(stat_text, sizeof(stat_text), "Charisma:     %2d (%+d)", 
                 creation->scores.charisma, character_creation_get_ability_modifier(creation->scores.charisma));
-        render_text_at_position(renderer, stat_text, 50, y_start + 5 * line_height, white);
+        render_text_at_position(renderer, medium_font, stat_text, 50, y_start + 5 * line_height, white);
         
         // Current selections
-        render_text_at_position(renderer, "Current Character:", 50, 300, white);
+        render_text_at_position(renderer, medium_font, "Current Character:", 50, 300, white);
         
         char selection_text[64];
         snprintf(selection_text, sizeof(selection_text), "Race: %s", 
                 character_creation_get_race_name(creation->race));
-        render_text_at_position(renderer, selection_text, 50, 330, 
+        render_text_at_position(renderer, medium_font, selection_text, 50, 330, 
                                creation->race_selected ? green : gray);
         
         snprintf(selection_text, sizeof(selection_text), "Class: %s", 
                 character_creation_get_class_name(creation->class));
-        render_text_at_position(renderer, selection_text, 50, 360, 
+        render_text_at_position(renderer, medium_font, selection_text, 50, 360, 
                                creation->class_selected ? green : gray);
         
         snprintf(selection_text, sizeof(selection_text), "Name: %s", creation->name);
-        render_text_at_position(renderer, selection_text, 50, 390, white);
+        render_text_at_position(renderer, medium_font, selection_text, 50, 390, white);
         
         // Show appropriate menu based on state
         if (creation->show_race_selection) {
             // Race selection menu
-            render_text_at_position(renderer, "Select Your Race:", 400, 120, yellow);
+            render_text_at_position(renderer, medium_font, "Select Your Race:", 400, 120, yellow);
             
             const char* race_info[] = {
                 "1. Human      (No requirements)",
@@ -495,18 +474,18 @@ void character_creation_render(CharacterCreation *creation, SDL_Renderer *render
                 SDL_Color color = can_select ? white : red;
                 if (can_select && i == RACE_HUMAN) color = green; // Highlight always-available option
                 
-                render_text_at_position(renderer, race_info[i], 400, 160 + i * 30, color);
+                render_text_at_position(renderer, medium_font, race_info[i], 400, 160 + i * 30, color);
                 
                 if (!can_select) {
-                    render_text_at_position(renderer, " (Requirement not met)", 600, 160 + i * 30, red);
+                    render_text_at_position(renderer, medium_font, " (Requirement not met)", 600, 160 + i * 30, red);
                 }
             }
             
-            render_text_at_position(renderer, "Press 1-4 to select a race", 400, 300, blue);
+            render_text_at_position(renderer, medium_font, "Press 1-4 to select a race", 400, 300, blue);
             
         } else if (creation->show_class_selection) {
             // Class selection menu
-            render_text_at_position(renderer, "Select Your Class:", 400, 120, yellow);
+            render_text_at_position(renderer, medium_font, "Select Your Class:", 400, 120, yellow);
             
             const char* class_info[] = {
                 "1. Fighter     (No requirements)",
@@ -520,28 +499,28 @@ void character_creation_render(CharacterCreation *creation, SDL_Renderer *render
                 SDL_Color color = can_select ? white : red;
                 if (can_select && i == CLASS_FIGHTER) color = green; // Highlight always-available option
                 
-                render_text_at_position(renderer, class_info[i], 400, 160 + i * 30, color);
+                render_text_at_position(renderer, medium_font, class_info[i], 400, 160 + i * 30, color);
                 
                 if (!can_select) {
-                    render_text_at_position(renderer, " (Requirement not met)", 600, 160 + i * 30, red);
+                    render_text_at_position(renderer, medium_font, " (Requirement not met)", 600, 160 + i * 30, red);
                 }
             }
             
-            render_text_at_position(renderer, "Press 1-4 to select a class", 400, 300, blue);
+            render_text_at_position(renderer, medium_font, "Press 1-4 to select a class", 400, 300, blue);
             
         } else {
             // Main character creation menu
-            render_text_at_position(renderer, "Options:", 400, 120, yellow);
-            render_text_at_position(renderer, "R - Reroll ability scores", 400, 160, white);
-            render_text_at_position(renderer, "A - Select race", 400, 190, 
+            render_text_at_position(renderer, medium_font, "Options:", 400, 120, yellow);
+            render_text_at_position(renderer, medium_font, "R - Reroll ability scores", 400, 160, white);
+            render_text_at_position(renderer, medium_font, "A - Select race", 400, 190, 
                                    creation->race_selected ? gray : white);
-            render_text_at_position(renderer, "C - Select class", 400, 220, 
+            render_text_at_position(renderer, medium_font, "C - Select class", 400, 220, 
                                    creation->class_selected ? gray : white);
             
             if (creation->race_selected && creation->class_selected) {
-                render_text_at_position(renderer, "RETURN - Start your adventure!", 400, 280, green);
+                render_text_at_position(renderer, medium_font, "RETURN - Start your adventure!", 400, 280, green);
             } else {
-                render_text_at_position(renderer, "Select race and class to continue", 400, 280, gray);
+                render_text_at_position(renderer, medium_font, "Select race and class to continue", 400, 280, gray);
             }
         }
     }

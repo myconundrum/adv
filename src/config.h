@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+// Forward declaration  
+struct AppState;
+
 // Configuration categories for better organization
 typedef struct {
     uint32_t max_entities;
@@ -87,28 +90,28 @@ typedef struct {
 } GameConfig;
 
 // Configuration system functions
-bool config_init(void);
-void config_cleanup(void);
-bool config_load_from_file(const char *filename);
-bool config_validate(void);
+bool config_init(struct AppState *app_state);
+void config_cleanup(struct AppState *app_state);
+bool config_load_from_file(const char *filename, struct AppState *app_state);
+bool config_validate(struct AppState *app_state);
 
 // Configuration accessors
-const GameConfig* config_get(void);
+const GameConfig* config_get(struct AppState *app_state);
 
 // Convenience accessors for frequently used values
-uint32_t config_get_max_entities(void);
-uint32_t config_get_dungeon_width(void);
-uint32_t config_get_dungeon_height(void);
-uint32_t config_get_cell_size(void);
-uint32_t config_get_fov_radius(void);
-uint32_t config_get_window_width_px(void);
-uint32_t config_get_window_height_px(void);
+uint32_t config_get_max_entities(struct AppState *app_state);
+uint32_t config_get_dungeon_width(struct AppState *app_state);
+uint32_t config_get_dungeon_height(struct AppState *app_state);
+uint32_t config_get_cell_size(struct AppState *app_state);
+uint32_t config_get_fov_radius(struct AppState *app_state);
+uint32_t config_get_window_width_px(struct AppState *app_state);
+uint32_t config_get_window_height_px(struct AppState *app_state);
 
 // Calculated derived values
-uint32_t config_get_window_width_cells(void);
-uint32_t config_get_window_height_cells(void);
-uint32_t config_get_fov_grid_size(void);
-uint32_t config_get_spatial_grid_width(void);
-uint32_t config_get_spatial_grid_height(void);
+uint32_t config_get_window_width_cells(struct AppState *app_state);
+uint32_t config_get_window_height_cells(struct AppState *app_state);
+uint32_t config_get_fov_grid_size(struct AppState *app_state);
+uint32_t config_get_spatial_grid_width(struct AppState *app_state);
+uint32_t config_get_spatial_grid_height(struct AppState *app_state);
 
 #endif

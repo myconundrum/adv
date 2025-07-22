@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 
 // Standard result codes for consistent error handling
 typedef enum {
@@ -25,29 +26,36 @@ typedef enum {
 
 // Error context for detailed error information
 typedef struct {
-    Result code;                        // Error code
+    Result result;                      // Error result/code
     char message[256];                  // Detailed error message
     const char *file;                   // Source file where error occurred
     int line;                           // Line number where error occurred
     const char *function;               // Function where error occurred
-    uint32_t error_id;                  // Unique error instance ID
 } ErrorContext;
 
-// Global error context (thread-local in multi-threaded environments)
-extern ErrorContext g_last_error;
+// Forward declaration
+struct AppState;
 
-// Error handling functions
-void error_set(Result code, const char *file, int line, const char *function, const char *format, ...);
-void error_clear(void);
-const ErrorContext* error_get_last(void);
-bool error_has_error(void);
+// Error handling functions - all require AppState
+void error_set(Result result, const char *message, const char *file, int line, const char *function, struct AppState *app_state);
+void error_clear(struct AppState *app_state);
+Result error_get_last(struct AppState *app_state);
+bool error_has_error(struct AppState *app_state);
 const char* error_code_to_string(Result code);
 
-// Convenience macros for error handling
-#define ERROR_SET(code, ...) error_set(code, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#define ERROR_RETURN(code, ...) do { ERROR_SET(code, __VA_ARGS__); return code; } while(0)
-#define ERROR_RETURN_NULL(code, ...) do { ERROR_SET(code, __VA_ARGS__); return NULL; } while(0)
-#define ERROR_RETURN_FALSE(code, ...) do { ERROR_SET(code, __VA_ARGS__); return false; } while(0)
+// Convenience macros
+#define ERROR_SET(result, ...) do { \
+    char _error_buf[256]; \
+    snprintf(_error_buf, sizeof(_error_buf), __VA_ARGS__); \
+    error_set((result), _error_buf, __FILE__, __LINE__, __func__, appstate_get()); \
+} while(0)
+
+#define ERROR_CLEAR() error_clear(appstate_get())
+#define ERROR_GET_LAST() error_get_last(appstate_get())
+#define ERROR_HAS_ERROR() error_has_error(appstate_get())
+#define ERROR_RETURN(result, ...) do { ERROR_SET((result), __VA_ARGS__); return (result); } while(0)
+#define ERROR_RETURN_FALSE(result, ...) do { ERROR_SET((result), __VA_ARGS__); return false; } while(0)
+#define ERROR_RETURN_NULL(result, ...) do { ERROR_SET((result), __VA_ARGS__); return NULL; } while(0)
 
 // Success check macros
 #define RESULT_OK_OR_RETURN(expr) do { \

@@ -1,4 +1,5 @@
 #include "spatial.h"
+#include "appstate.h"
 #include "error.h"
 #include "log.h"
 #include <math.h>

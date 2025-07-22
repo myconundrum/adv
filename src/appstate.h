@@ -11,6 +11,8 @@
 #include "error.h"
 #include "baseds.h"
 #include "field.h"
+#include "mempool.h"
+#include "config.h"
 
 // Forward declarations
 struct ComponentHashEntry;
@@ -146,7 +148,12 @@ typedef struct {
    typedef struct {
         SDL_Window *window;
         SDL_Renderer *renderer;
-        TTF_Font *font;
+        
+        // Multiple font sizes for different UI purposes
+        TTF_Font *font_small;   // 14pt - for sidebar, status line
+        TTF_Font *font_medium;  // 16pt - for main game, character creation
+        TTF_Font *font_large;   // 18pt - for main menu
+        
         bool initialized;
         
         // Z-buffers
@@ -186,6 +193,12 @@ typedef struct AppState {
 
     // Render state
     RenderState render;
+
+    // Memory pool (from g_mempool)
+    MemoryPool mempool;
+
+    // Configuration (from g_config)
+    GameConfig config;
 
 } AppState;
 

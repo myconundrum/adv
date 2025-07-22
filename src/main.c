@@ -15,7 +15,7 @@
 #include "game_state.h"
 
 // Cleanup function to handle all resources
-static void cleanup_resources(void) {
+static void cleanup_game_systems(void) {
     AppState *as = appstate_get();
     if (as && as->initialized) {
         template_system_cleanup();
@@ -37,13 +37,15 @@ static void cleanup_resources(void) {
     // Shutdown the appstate singleton
     appstate_shutdown();
     
-    // Cleanup memory pool system
-    if (mempool_is_initialized()) {
-        mempool_cleanup();
+    // Cleanup memory pool system  
+    if (as && mempool_is_initialized(as)) {
+        mempool_cleanup(as);
     }
     
     // Cleanup configuration system
-    config_cleanup();
+    if (as) {
+        config_cleanup(as);
+    }
 }
 
 // Initialize game systems
@@ -112,44 +114,40 @@ bool init_all(void) {
     
     LOG_INFO("Starting Adventure Game - ECS");
     
-    // Initialize configuration system
-    if (!config_init()) {
-        LOG_FATAL("Failed to initialize configuration system");
+    // Initialize appstate singleton first
+    if (!appstate_init()) {
+        LOG_FATAL("Failed to initialize AppState");
         return false;
     }
     
-    // Load configuration from file
-    if (!config_load_from_file("adv_config.json")) {
+    // Initialize configuration system
+    if (!config_init(appstate_get())) {
+        LOG_FATAL("Failed to initialize configuration system");
+        cleanup_game_systems();
+        return false;
+    }
+    
+    if (!config_load_from_file("adv_config.json", appstate_get())) {
         LOG_WARN("Failed to load adv_config.json, using defaults");
     }
     
-    // Initialize memory pool system
-    const GameConfig *config = config_get();
-    if (config->mempool.enable_pool_allocation) {
-        mempool_set_chunk_count(config->mempool.initial_chunks_per_pool, 
-                               config->mempool.max_chunks_per_pool);
-        mempool_enable_corruption_detection(config->mempool.enable_corruption_detection);
-        mempool_enable_statistics(config->mempool.enable_statistics);
-        
-        if (!mempool_init()) {
-            LOG_FATAL("Failed to initialize memory pool");
-            return false;
-        }
-        LOG_INFO("Memory pool system initialized");
-    } else {
-        LOG_INFO("Memory pool allocation disabled by configuration");
-    }
+    // Initialize memory pool with config settings
+    const GameConfig *config = config_get(appstate_get());
+    mempool_set_chunk_limits(appstate_get(), config->mempool.initial_chunks_per_pool,
+                             config->mempool.max_chunks_per_pool);
+    mempool_set_corruption_detection(appstate_get(), config->mempool.enable_corruption_detection);
+    mempool_set_statistics(appstate_get(), config->mempool.enable_statistics);
     
-    // Initialize appstate singleton
-    if (!appstate_init()) {
-        LOG_FATAL("Failed to initialize AppState");
+    if (!mempool_init(appstate_get())) {
+        LOG_ERROR("Failed to initialize memory pool");
+        cleanup_game_systems();
         return false;
     }
     
     // Initialize game systems
     if (!init_game_systems()) {
         LOG_FATAL("Failed to initialize game systems");
-        cleanup_resources();
+        cleanup_game_systems();
         return false;
     }
     
@@ -174,7 +172,7 @@ int main(int argc, char* argv[]) {
     GameStateManager *state_manager = game_state_manager_create();
     if (!state_manager) {
         LOG_FATAL("Failed to create game state manager");
-        cleanup_resources();
+        cleanup_game_systems();
         return 1;
     }
     
@@ -210,7 +208,7 @@ int main(int argc, char* argv[]) {
     // Cleanup
     LOG_INFO("Shutting down game");
     game_state_manager_destroy(state_manager);
-    cleanup_resources();
+    cleanup_game_systems();
     log_shutdown();
     
     return 0;

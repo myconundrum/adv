@@ -286,14 +286,14 @@ static void render_system_post_update(AppState *app_state) {
             
             // Check entity layer first (z-buffer 1)
             if (app_state->render.z_buffer_1 && app_state->render.z_buffer_1[index].has_content) {
-                render_tile_at_screen_pos_to_renderer(app_state->render.renderer, app_state->render.font,
+                render_tile_at_screen_pos_to_renderer(app_state->render.renderer, app_state->render.font_medium,
                                                      actual_screen_x, actual_screen_y,
                                                      app_state->render.z_buffer_1[index].character, 
                                                      app_state->render.z_buffer_1[index].color);
             }
             // Fall back to background layer (z-buffer 0)
             else if (app_state->render.z_buffer_0 && app_state->render.z_buffer_0[index].has_content) {
-                render_tile_at_screen_pos_to_renderer(app_state->render.renderer, app_state->render.font,
+                render_tile_at_screen_pos_to_renderer(app_state->render.renderer, app_state->render.font_medium,
                                                      actual_screen_x, actual_screen_y,
                                                      app_state->render.z_buffer_0[index].character, 
                                                      app_state->render.z_buffer_0[index].color);
@@ -354,49 +354,68 @@ int render_system_init(AppState *app_state) {
         return 0;
     }
     
-    // Load a monospace font for consistent character rendering
-    // Try multiple fixed-width fonts in order of preference
+    // Initialize fonts - try multiple paths for each size
     const char* font_paths[] = {
-        // macOS fonts
         "/System/Library/Fonts/Monaco.ttf",
-        "/System/Library/Fonts/Courier.ttc",
+        "/System/Library/Fonts/Courier.ttc", 
         "/System/Library/Fonts/Menlo.ttc",
-        "/System/Library/Fonts/Andale Mono.ttf",
-        
-        // Linux fonts
         "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
         "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
-        "/usr/share/fonts/truetype/ubuntu/UbuntuMono-R.ttf",
-        "/usr/share/fonts/truetype/freefont/FreeMono.ttf",
-        
-        // Windows fonts (if running on Wine or similar)
-        "/mnt/c/Windows/Fonts/consola.ttf",
-        "/mnt/c/Windows/Fonts/cour.ttf",
-        
-        // Common fallbacks
-        "/usr/share/fonts/truetype/misc/fixed-sys.ttf",
         NULL
     };
     
-    app_state->render.font = NULL;
+    // Initialize all fonts to NULL
+    app_state->render.font_small = NULL;
+    app_state->render.font_medium = NULL;
+    app_state->render.font_large = NULL;
+    
+    // Load small font (14pt) - for sidebar, status
     for (int i = 0; font_paths[i] != NULL; i++) {
-        app_state->render.font = TTF_OpenFont(font_paths[i], 16);
-        if (app_state->render.font) {
-            LOG_INFO("Loaded font: %s", font_paths[i]);
+        app_state->render.font_small = TTF_OpenFont(font_paths[i], 14);
+        if (app_state->render.font_small) {
+            LOG_INFO("Loaded small font: %s", font_paths[i]);
             break;
         }
     }
     
-    if (!app_state->render.font) {
-        LOG_WARN("Could not load any fixed-width font, falling back to rectangle rendering");
+    // Load medium font (16pt) - for main game, character creation
+    for (int i = 0; font_paths[i] != NULL; i++) {
+        app_state->render.font_medium = TTF_OpenFont(font_paths[i], 16);
+        if (app_state->render.font_medium) {
+            LOG_INFO("Loaded medium font: %s", font_paths[i]);
+            break;
+        }
+    }
+    
+    // Load large font (18pt) - for main menu  
+    for (int i = 0; font_paths[i] != NULL; i++) {
+        app_state->render.font_large = TTF_OpenFont(font_paths[i], 18);
+        if (app_state->render.font_large) {
+            LOG_INFO("Loaded large font: %s", font_paths[i]);
+            break;
+        }
+    }
+    
+    if (!app_state->render.font_small || !app_state->render.font_medium || !app_state->render.font_large) {
+        LOG_WARN("Could not load all required fonts");
     }
     
     // Initialize z-buffer system
     if (!init_z_buffers(app_state)) {
         LOG_ERROR("Failed to initialize z-buffer system");
-        if (app_state->render.font) {
-            TTF_CloseFont(app_state->render.font);
-            app_state->render.font = NULL;
+        
+        // Cleanup fonts on failure
+        if (app_state->render.font_small) {
+            TTF_CloseFont(app_state->render.font_small);
+            app_state->render.font_small = NULL;
+        }
+        if (app_state->render.font_medium) {
+            TTF_CloseFont(app_state->render.font_medium);
+            app_state->render.font_medium = NULL;
+        }
+        if (app_state->render.font_large) {
+            TTF_CloseFont(app_state->render.font_large);
+            app_state->render.font_large = NULL;
         }
         SDL_DestroyRenderer(app_state->render.renderer);
         SDL_DestroyWindow(app_state->render.window);
@@ -416,9 +435,18 @@ void render_system_cleanup(AppState *app_state) {
     // Clean up z-buffers first
     cleanup_z_buffers(app_state);
     
-    if (app_state->render.font) {
-        TTF_CloseFont(app_state->render.font);
-        app_state->render.font = NULL;
+    // Cleanup all fonts
+    if (app_state->render.font_small) {
+        TTF_CloseFont(app_state->render.font_small);
+        app_state->render.font_small = NULL;
+    }
+    if (app_state->render.font_medium) {
+        TTF_CloseFont(app_state->render.font_medium);
+        app_state->render.font_medium = NULL;
+    }
+    if (app_state->render.font_large) {
+        TTF_CloseFont(app_state->render.font_large);
+        app_state->render.font_large = NULL;
     }
     if (app_state->render.renderer) {
         SDL_DestroyRenderer(app_state->render.renderer);
@@ -434,7 +462,24 @@ void render_system_cleanup(AppState *app_state) {
 }
 
 SDL_Renderer* render_system_get_renderer(AppState *app_state) {
-    return app_state ? app_state->render.renderer : NULL;
+    if (!app_state) return NULL;
+    return app_state->render.renderer;
+}
+
+// Font accessor functions - centralized font management for all view systems
+TTF_Font* render_system_get_small_font(AppState *app_state) {
+    if (!app_state) return NULL;
+    return app_state->render.font_small;
+}
+
+TTF_Font* render_system_get_medium_font(AppState *app_state) {
+    if (!app_state) return NULL;
+    return app_state->render.font_medium;
+}
+
+TTF_Font* render_system_get_large_font(AppState *app_state) {
+    if (!app_state) return NULL;
+    return app_state->render.font_large;
 }
 
 void render_system_register(void) {

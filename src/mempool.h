@@ -5,6 +5,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+// Forward declaration
+struct AppState;
+
 // Memory pool size classes (powers of 2 for efficient allocation)
 typedef enum {
     POOL_SIZE_16 = 0,    // 16 bytes
@@ -72,32 +75,38 @@ typedef struct {
 #define POOL_FREE_MAGIC  0xFEEDFACE
 
 // Memory pool functions
-bool mempool_init(void);
-void mempool_cleanup(void);
-bool mempool_is_initialized(void);
+bool mempool_init(struct AppState *app_state);
+void mempool_cleanup(struct AppState *app_state);
+bool mempool_is_initialized(struct AppState *app_state);
 
 // Core allocation functions
-void* pool_malloc(size_t size);
-void pool_free(void *ptr);
-void* pool_calloc(size_t count, size_t size);
-void* pool_realloc(void *ptr, size_t new_size);
+void* pool_malloc(size_t size, struct AppState *app_state);
+void pool_free(void *ptr, struct AppState *app_state);
+void* pool_calloc(size_t count, size_t size, struct AppState *app_state);
+void* pool_realloc(void *ptr, size_t new_size, struct AppState *app_state);
+
+// Alternative interface that auto-selects best size class
+void* pool_malloc_auto(size_t size, struct AppState *app_state);
 
 // Utility functions
 PoolSizeClass mempool_get_size_class(size_t size);
 size_t mempool_get_class_size(PoolSizeClass class);
-bool mempool_expand_pool(PoolSizeClass class);
+bool mempool_expand_pool(PoolSizeClass class, struct AppState *app_state);
 
-// Statistics and debugging
-void mempool_print_stats(void);
-void mempool_print_detailed_stats(void);
-bool mempool_validate_integrity(void);
-size_t mempool_get_total_memory_usage(void);
-size_t mempool_get_free_memory(void);
+// Debugging and statistics
+void mempool_print_stats(struct AppState *app_state);
+void mempool_print_detailed_stats(struct AppState *app_state);
+bool mempool_validate_integrity(struct AppState *app_state);
+size_t mempool_get_total_memory_usage(struct AppState *app_state);
+size_t mempool_get_free_memory(struct AppState *app_state);
+uint64_t mempool_get_total_usage(struct AppState *app_state);
+uint64_t mempool_get_peak_usage(struct AppState *app_state);
+bool mempool_validate_all_pools(struct AppState *app_state);
 
-// Configuration
-void mempool_set_chunk_count(uint32_t initial_chunks, uint32_t max_chunks);
-void mempool_enable_corruption_detection(bool enable);
-void mempool_enable_statistics(bool enable);
+// Configuration (call before mempool_init)
+void mempool_set_chunk_limits(struct AppState *app_state, uint32_t initial_chunks, uint32_t max_chunks);
+void mempool_set_corruption_detection(struct AppState *app_state, bool enable);
+void mempool_set_statistics(struct AppState *app_state, bool enable);
 
 // Optional: Convenience macros for drop-in replacement
 #define POOL_MALLOC(size) pool_malloc(size)

@@ -1,13 +1,11 @@
 #include "config.h"
 #include "log.h"
 #include "error.h"
+#include "appstate.h"
 #include <cjson/cJSON.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-// Global configuration instance
-static GameConfig g_config = {0};
 
 // Default configuration values
 static const GameConfig DEFAULT_CONFIG = {
@@ -215,107 +213,107 @@ static bool load_render_config(const cJSON *json, RenderConfig *render) {
 }
 
 // Load remaining configurations (simplified for brevity)
-static bool load_remaining_configs(const cJSON *json) {
+static bool load_remaining_configs(const cJSON *json, struct AppState *app_state) {
     // FOV
     const cJSON *fov_json = cJSON_GetObjectItemCaseSensitive(json, "fov");
     if (cJSON_IsObject(fov_json)) {
-        json_get_uint32(fov_json, "radius", &g_config.fov.radius);
+        json_get_uint32(fov_json, "radius", &app_state->config.fov.radius);
     }
     
     // Spatial
     const cJSON *spatial_json = cJSON_GetObjectItemCaseSensitive(json, "spatial");
     if (cJSON_IsObject(spatial_json)) {
-        json_get_uint32(spatial_json, "cell_size", &g_config.spatial.cell_size);
-        json_get_uint32(spatial_json, "max_entities_per_cell", &g_config.spatial.max_entities_per_cell);
+        json_get_uint32(spatial_json, "cell_size", &app_state->config.spatial.cell_size);
+        json_get_uint32(spatial_json, "max_entities_per_cell", &app_state->config.spatial.max_entities_per_cell);
     }
     
     // Inventory
     const cJSON *inventory_json = cJSON_GetObjectItemCaseSensitive(json, "inventory");
     if (cJSON_IsObject(inventory_json)) {
-        json_get_uint32(inventory_json, "max_items", &g_config.inventory.max_items);
+        json_get_uint32(inventory_json, "max_items", &app_state->config.inventory.max_items);
     }
     
     // Messages
     const cJSON *message_json = cJSON_GetObjectItemCaseSensitive(json, "message");
     if (cJSON_IsObject(message_json)) {
-        json_get_uint32(message_json, "queue_length", &g_config.message.queue_length);
-        json_get_uint32(message_json, "max_text_length", &g_config.message.max_text_length);
-        json_get_uint32(message_json, "max_wrapped_lines", &g_config.message.max_wrapped_lines);
+        json_get_uint32(message_json, "queue_length", &app_state->config.message.queue_length);
+        json_get_uint32(message_json, "max_text_length", &app_state->config.message.max_text_length);
+        json_get_uint32(message_json, "max_wrapped_lines", &app_state->config.message.max_wrapped_lines);
     }
     
     // Message View
     const cJSON *msg_view_json = cJSON_GetObjectItemCaseSensitive(json, "message_view");
     if (cJSON_IsObject(msg_view_json)) {
-        json_get_uint32(msg_view_json, "default_width", &g_config.message_view.default_width);
-        json_get_uint32(msg_view_json, "default_height", &g_config.message_view.default_height);
-        json_get_uint32(msg_view_json, "min_width", &g_config.message_view.min_width);
-        json_get_uint32(msg_view_json, "min_height", &g_config.message_view.min_height);
-        json_get_uint32(msg_view_json, "line_height", &g_config.message_view.line_height);
-        json_get_uint32(msg_view_json, "margin", &g_config.message_view.margin);
-        json_get_uint32(msg_view_json, "scrollbar_width", &g_config.message_view.scrollbar_width);
+        json_get_uint32(msg_view_json, "default_width", &app_state->config.message_view.default_width);
+        json_get_uint32(msg_view_json, "default_height", &app_state->config.message_view.default_height);
+        json_get_uint32(msg_view_json, "min_width", &app_state->config.message_view.min_width);
+        json_get_uint32(msg_view_json, "min_height", &app_state->config.message_view.min_height);
+        json_get_uint32(msg_view_json, "line_height", &app_state->config.message_view.line_height);
+        json_get_uint32(msg_view_json, "margin", &app_state->config.message_view.margin);
+        json_get_uint32(msg_view_json, "scrollbar_width", &app_state->config.message_view.scrollbar_width);
     }
     
     // Memory Pool
     const cJSON *mempool_json = cJSON_GetObjectItemCaseSensitive(json, "mempool");
     if (cJSON_IsObject(mempool_json)) {
-        json_get_uint32(mempool_json, "initial_chunks_per_pool", &g_config.mempool.initial_chunks_per_pool);
-        json_get_uint32(mempool_json, "max_chunks_per_pool", &g_config.mempool.max_chunks_per_pool);
-        json_get_bool(mempool_json, "enable_corruption_detection", &g_config.mempool.enable_corruption_detection);
-        json_get_bool(mempool_json, "enable_statistics", &g_config.mempool.enable_statistics);
-        json_get_bool(mempool_json, "enable_pool_allocation", &g_config.mempool.enable_pool_allocation);
+        json_get_uint32(mempool_json, "initial_chunks_per_pool", &app_state->config.mempool.initial_chunks_per_pool);
+        json_get_uint32(mempool_json, "max_chunks_per_pool", &app_state->config.mempool.max_chunks_per_pool);
+        json_get_bool(mempool_json, "enable_corruption_detection", &app_state->config.mempool.enable_corruption_detection);
+        json_get_bool(mempool_json, "enable_statistics", &app_state->config.mempool.enable_statistics);
+        json_get_bool(mempool_json, "enable_pool_allocation", &app_state->config.mempool.enable_pool_allocation);
     }
     
     return true;
 }
 
 // Calculate derived values
-static void calculate_derived_values(void) {
+static void calculate_derived_values(struct AppState *app_state) {
     // FOV grid size
-    g_config.fov.grid_size = g_config.fov.radius * 2 + 1;
+    app_state->config.fov.grid_size = app_state->config.fov.radius * 2 + 1;
     
     // Spatial grid dimensions
-    g_config.spatial.grid_width = (g_config.dungeon.width + g_config.spatial.cell_size - 1) / g_config.spatial.cell_size;
-    g_config.spatial.grid_height = (g_config.dungeon.height + g_config.spatial.cell_size - 1) / g_config.spatial.cell_size;
+    app_state->config.spatial.grid_width = (app_state->config.dungeon.width + app_state->config.spatial.cell_size - 1) / app_state->config.spatial.cell_size;
+    app_state->config.spatial.grid_height = (app_state->config.dungeon.height + app_state->config.spatial.cell_size - 1) / app_state->config.spatial.cell_size;
 }
 
 // Validate configuration ranges
-static bool validate_ranges(void) {
+static bool validate_ranges(struct AppState *app_state) {
     bool valid = true;
     
     // Validate ECS limits
-    if (g_config.ecs.max_entities < ECS_LIMITS.max_entities.min || 
-        g_config.ecs.max_entities > ECS_LIMITS.max_entities.max) {
+    if (app_state->config.ecs.max_entities < ECS_LIMITS.max_entities.min || 
+        app_state->config.ecs.max_entities > ECS_LIMITS.max_entities.max) {
         LOG_ERROR("max_entities (%u) out of range [%u, %u]", 
-                  g_config.ecs.max_entities, ECS_LIMITS.max_entities.min, ECS_LIMITS.max_entities.max);
+                  app_state->config.ecs.max_entities, ECS_LIMITS.max_entities.min, ECS_LIMITS.max_entities.max);
         valid = false;
     }
     
-    if (g_config.ecs.max_components < ECS_LIMITS.max_components.min || 
-        g_config.ecs.max_components > ECS_LIMITS.max_components.max) {
+    if (app_state->config.ecs.max_components < ECS_LIMITS.max_components.min || 
+        app_state->config.ecs.max_components > ECS_LIMITS.max_components.max) {
         LOG_ERROR("max_components (%u) out of range [%u, %u]", 
-                  g_config.ecs.max_components, ECS_LIMITS.max_components.min, ECS_LIMITS.max_components.max);
+                  app_state->config.ecs.max_components, ECS_LIMITS.max_components.min, ECS_LIMITS.max_components.max);
         valid = false;
     }
     
     // Validate dungeon limits
-    if (g_config.dungeon.width < DUNGEON_LIMITS.width.min || 
-        g_config.dungeon.width > DUNGEON_LIMITS.width.max) {
+    if (app_state->config.dungeon.width < DUNGEON_LIMITS.width.min || 
+        app_state->config.dungeon.width > DUNGEON_LIMITS.width.max) {
         LOG_ERROR("dungeon width (%u) out of range [%u, %u]", 
-                  g_config.dungeon.width, DUNGEON_LIMITS.width.min, DUNGEON_LIMITS.width.max);
+                  app_state->config.dungeon.width, DUNGEON_LIMITS.width.min, DUNGEON_LIMITS.width.max);
         valid = false;
     }
     
-    if (g_config.dungeon.min_room_size >= g_config.dungeon.max_room_size) {
+    if (app_state->config.dungeon.min_room_size >= app_state->config.dungeon.max_room_size) {
         LOG_ERROR("min_room_size (%u) must be less than max_room_size (%u)", 
-                  g_config.dungeon.min_room_size, g_config.dungeon.max_room_size);
+                  app_state->config.dungeon.min_room_size, app_state->config.dungeon.max_room_size);
         valid = false;
     }
     
     // Validate render limits
-    if (g_config.render.cell_size < RENDER_LIMITS.cell_size.min || 
-        g_config.render.cell_size > RENDER_LIMITS.cell_size.max) {
+    if (app_state->config.render.cell_size < RENDER_LIMITS.cell_size.min || 
+        app_state->config.render.cell_size > RENDER_LIMITS.cell_size.max) {
         LOG_ERROR("cell_size (%u) out of range [%u, %u]", 
-                  g_config.render.cell_size, RENDER_LIMITS.cell_size.min, RENDER_LIMITS.cell_size.max);
+                  app_state->config.render.cell_size, RENDER_LIMITS.cell_size.min, RENDER_LIMITS.cell_size.max);
         valid = false;
     }
     
@@ -323,22 +321,22 @@ static bool validate_ranges(void) {
 }
 
 // Initialize configuration system
-bool config_init(void) {
+bool config_init(struct AppState *app_state) {
     // Start with default configuration
-    g_config = DEFAULT_CONFIG;
+    app_state->config = DEFAULT_CONFIG;
     
     LOG_INFO("Configuration system initialized with defaults");
     return true;
 }
 
 // Cleanup configuration system
-void config_cleanup(void) {
-    memset(&g_config, 0, sizeof(GameConfig));
+void config_cleanup(struct AppState *app_state) {
+    memset(&app_state->config, 0, sizeof(GameConfig));
     LOG_INFO("Configuration system cleaned up");
 }
 
 // Load configuration from JSON file
-bool config_load_from_file(const char *filename) {
+bool config_load_from_file(const char *filename, struct AppState *app_state) {
     if (!filename) {
         ERROR_SET(RESULT_ERROR_NULL_POINTER, "Filename cannot be NULL");
         return false;
@@ -384,10 +382,10 @@ bool config_load_from_file(const char *filename) {
     
     // Load configuration sections
     bool success = true;
-    success &= load_ecs_config(json, &g_config.ecs);
-    success &= load_dungeon_config(json, &g_config.dungeon);
-    success &= load_render_config(json, &g_config.render);
-    success &= load_remaining_configs(json);
+    success &= load_ecs_config(json, &app_state->config.ecs);
+    success &= load_dungeon_config(json, &app_state->config.dungeon);
+    success &= load_render_config(json, &app_state->config.render);
+    success &= load_remaining_configs(json, app_state);
     
     cJSON_Delete(json);
     
@@ -397,56 +395,56 @@ bool config_load_from_file(const char *filename) {
     }
     
     // Calculate derived values and validate
-    calculate_derived_values();
+    calculate_derived_values(app_state);
     
-    if (!config_validate()) {
+    if (!config_validate(app_state)) {
         LOG_ERROR("Configuration validation failed");
         return false;
     }
     
     // Save config file path and mark as loaded
-    strncpy(g_config.config_file_path, filename, sizeof(g_config.config_file_path) - 1);
-    g_config.config_file_path[sizeof(g_config.config_file_path) - 1] = '\0';
-    g_config.loaded = true;
+    strncpy(app_state->config.config_file_path, filename, sizeof(app_state->config.config_file_path) - 1);
+    app_state->config.config_file_path[sizeof(app_state->config.config_file_path) - 1] = '\0';
+    app_state->config.loaded = true;
     
     LOG_INFO("Successfully loaded configuration from %s", filename);
     return true;
 }
 
 // Validate configuration
-bool config_validate(void) {
-    return validate_ranges();
+bool config_validate(struct AppState *app_state) {
+    return validate_ranges(app_state);
 }
 
 // Get configuration instance
-const GameConfig* config_get(void) {
-    return &g_config;
+const GameConfig* config_get(struct AppState *app_state) {
+    return &app_state->config;
 }
 
 // Convenience accessors
-uint32_t config_get_max_entities(void) { return g_config.ecs.max_entities; }
-uint32_t config_get_dungeon_width(void) { return g_config.dungeon.width; }
-uint32_t config_get_dungeon_height(void) { return g_config.dungeon.height; }
-uint32_t config_get_cell_size(void) { return g_config.render.cell_size; }
-uint32_t config_get_fov_radius(void) { return g_config.fov.radius; }
+uint32_t config_get_max_entities(struct AppState *app_state) { return app_state->config.ecs.max_entities; }
+uint32_t config_get_dungeon_width(struct AppState *app_state) { return app_state->config.dungeon.width; }
+uint32_t config_get_dungeon_height(struct AppState *app_state) { return app_state->config.dungeon.height; }
+uint32_t config_get_cell_size(struct AppState *app_state) { return app_state->config.render.cell_size; }
+uint32_t config_get_fov_radius(struct AppState *app_state) { return app_state->config.fov.radius; }
 
-uint32_t config_get_window_width_px(void) {
-    return config_get_window_width_cells() * g_config.render.cell_size;
+uint32_t config_get_window_width_px(struct AppState *app_state) {
+    return config_get_window_width_cells(app_state) * app_state->config.render.cell_size;
 }
 
-uint32_t config_get_window_height_px(void) {
-    return config_get_window_height_cells() * g_config.render.cell_size;
+uint32_t config_get_window_height_px(struct AppState *app_state) {
+    return config_get_window_height_cells(app_state) * app_state->config.render.cell_size;
 }
 
 // Calculated derived values
-uint32_t config_get_window_width_cells(void) {
-    return g_config.render.sidebar_width + g_config.render.game_area_width;
+uint32_t config_get_window_width_cells(struct AppState *app_state) {
+    return app_state->config.render.sidebar_width + app_state->config.render.game_area_width;
 }
 
-uint32_t config_get_window_height_cells(void) {
-    return g_config.render.game_area_height + g_config.render.status_line_height;
+uint32_t config_get_window_height_cells(struct AppState *app_state) {
+    return app_state->config.render.game_area_height + app_state->config.render.status_line_height;
 }
 
-uint32_t config_get_fov_grid_size(void) { return g_config.fov.grid_size; }
-uint32_t config_get_spatial_grid_width(void) { return g_config.spatial.grid_width; }
-uint32_t config_get_spatial_grid_height(void) { return g_config.spatial.grid_height; } 
+uint32_t config_get_fov_grid_size(struct AppState *app_state) { return app_state->config.fov.grid_size; }
+uint32_t config_get_spatial_grid_width(struct AppState *app_state) { return app_state->config.spatial.grid_width; }
+uint32_t config_get_spatial_grid_height(struct AppState *app_state) { return app_state->config.spatial.grid_height; } 

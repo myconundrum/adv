@@ -33,10 +33,10 @@ static void component_hash_table_init(ComponentHashTable *table) {
 }
 
 // Add entry to hash table
-static void component_hash_table_add(ComponentHashTable *table, const char *name, uint32_t component_id) {
+static void component_hash_table_add(ComponentHashTable *table, const char *name, uint32_t component_id, AppState *app_state) {
     uint32_t bucket = hash_component_name(name);
     
-    ComponentHashEntry *entry = pool_malloc(sizeof(ComponentHashEntry));
+    ComponentHashEntry *entry = pool_malloc(sizeof(ComponentHashEntry), app_state);
     if (!entry) {
         LOG_ERROR("Failed to allocate memory for hash table entry");
         return;
@@ -65,12 +65,12 @@ static uint32_t component_hash_table_find(ComponentHashTable *table, const char 
 }
 
 // Cleanup hash table
-static void component_hash_table_cleanup(ComponentHashTable *table) {
+static void component_hash_table_cleanup(ComponentHashTable *table, AppState *app_state) {
     for (int i = 0; i < COMPONENT_HASH_TABLE_SIZE; i++) {
         ComponentHashEntry *entry = table->buckets[i];
         while (entry != NULL) {
             ComponentHashEntry *next = entry->next;
-            pool_free(entry);
+            pool_free(entry, app_state);
             entry = next;
         }
         table->buckets[i] = NULL;
@@ -108,17 +108,17 @@ typedef struct {
 // SparseComponentArray is now defined in appstate.h
 
 // Forward declarations for sparse array functions
-static bool sparse_array_init(SparseComponentArray *array, size_t component_size);
-static void sparse_array_cleanup(SparseComponentArray *array);
+static bool sparse_array_init(SparseComponentArray *array, size_t component_size, AppState *app_state);
+static void sparse_array_cleanup(SparseComponentArray *array, AppState *app_state);
 static bool sparse_array_resize(SparseComponentArray *array, uint32_t new_capacity);
-static bool sparse_array_add(SparseComponentArray *array, Entity entity, void *component_data);
+static bool sparse_array_add(SparseComponentArray *array, Entity entity, void *component_data, AppState *app_state);
 static void* sparse_array_get(SparseComponentArray *array, Entity entity);
-static bool sparse_array_remove(SparseComponentArray *array, Entity entity);
+static bool sparse_array_remove(SparseComponentArray *array, Entity entity, AppState *app_state);
 
 // ComponentRegistryEntry is now defined in appstate.h
 
 // Sparse component array utility functions
-static bool sparse_array_init(SparseComponentArray *array, size_t component_size) {
+static bool sparse_array_init(SparseComponentArray *array, size_t component_size, AppState *app_state) {
     array->sparse = calloc(MAX_ENTITIES, sizeof(uint32_t));
     array->dense_entities = malloc(INITIAL_COMPONENT_CAPACITY * sizeof(uint32_t));
     array->dense_components = malloc(INITIAL_COMPONENT_CAPACITY * sizeof(void*));
@@ -127,7 +127,7 @@ static bool sparse_array_init(SparseComponentArray *array, size_t component_size
     array->component_size = component_size;
     
     if (!array->sparse || !array->dense_entities || !array->dense_components) {
-        sparse_array_cleanup(array);
+        sparse_array_cleanup(array, app_state);
         return false;
     }
     
@@ -139,7 +139,7 @@ static bool sparse_array_init(SparseComponentArray *array, size_t component_size
     return true;
 }
 
-static void sparse_array_cleanup(SparseComponentArray *array) {
+static void sparse_array_cleanup(SparseComponentArray *array, AppState *app_state) {
     if (array->sparse) {
         free(array->sparse);
         array->sparse = NULL;
@@ -152,7 +152,7 @@ static void sparse_array_cleanup(SparseComponentArray *array) {
         // Free individual component data using memory pool
         for (uint32_t i = 0; i < array->count; i++) {
             if (array->dense_components[i]) {
-                pool_free(array->dense_components[i]);
+                pool_free(array->dense_components[i], app_state);
             }
         }
         free(array->dense_components);
@@ -176,7 +176,7 @@ static bool sparse_array_resize(SparseComponentArray *array, uint32_t new_capaci
     return true;
 }
 
-static bool sparse_array_add(SparseComponentArray *array, Entity entity, void *component_data) {
+static bool sparse_array_add(SparseComponentArray *array, Entity entity, void *component_data, AppState *app_state) {
     // Check if entity already has this component
     if (entity < MAX_ENTITIES && array->sparse[entity] != UINT32_MAX) {
         // Update existing component
@@ -193,7 +193,7 @@ static bool sparse_array_add(SparseComponentArray *array, Entity entity, void *c
     }
     
     // Allocate memory for new component using memory pool
-    void *new_component = pool_malloc(array->component_size);
+    void *new_component = pool_malloc(array->component_size, app_state);
     if (!new_component) {
         return false;
     }
@@ -228,7 +228,7 @@ static void* sparse_array_get(SparseComponentArray *array, Entity entity) {
     return array->dense_components[dense_index];
 }
 
-static bool sparse_array_remove(SparseComponentArray *array, Entity entity) {
+static bool sparse_array_remove(SparseComponentArray *array, Entity entity, AppState *app_state) {
     if (entity >= MAX_ENTITIES) {
         return false;
     }
@@ -240,7 +240,7 @@ static bool sparse_array_remove(SparseComponentArray *array, Entity entity) {
     
     // Free the component data using memory pool
     if (array->dense_components[dense_index]) {
-        pool_free(array->dense_components[dense_index]);
+        pool_free(array->dense_components[dense_index], app_state);
     }
     
     // Move last element to fill the gap (swap-remove)
@@ -493,7 +493,7 @@ static void entity_remove_from_active(struct AppState *app_state, Entity entity)
                     app_state->ecs.active_entities.list.tail = prev;
                 }
             }
-            pool_free(current);
+            pool_free(current, app_state);
             app_state->ecs.active_entities.list.size--;
             return;
         }
@@ -529,7 +529,7 @@ void ecs_init(struct AppState *app_state) {
     size_t total_memory = 0;
     for (uint32_t i = 0; i < app_state->ecs.components.component_count; i++) {
         if (!sparse_array_init(&app_state->ecs.components.component_arrays[i], 
-                              app_state->ecs.components.component_info[i].data_size)) {
+                              app_state->ecs.components.component_info[i].data_size, app_state)) {
             LOG_ERROR("Failed to initialize sparse array for component %s", 
                       app_state->ecs.components.component_info[i].name);
             return;
@@ -574,11 +574,11 @@ void ecs_shutdown(struct AppState *app_state) {
     
     // Cleanup sparse component arrays
     for (uint32_t i = 0; i < app_state->ecs.components.component_count; i++) {
-        sparse_array_cleanup(&app_state->ecs.components.component_arrays[i]);
+        sparse_array_cleanup(&app_state->ecs.components.component_arrays[i], app_state);
     }
     
     // Cleanup component hash table
-    component_hash_table_cleanup(&app_state->ecs.components.name_lookup);
+    component_hash_table_cleanup(&app_state->ecs.components.name_lookup, app_state);
     
     LOG_INFO("ECS shutdown complete - sparse storage cleaned up");
 }
@@ -617,7 +617,7 @@ void entity_destroy(struct AppState *app_state, Entity entity) {
         return;
     }
     
-    if (entity >= config_get_max_entities() || !entity_is_active(app_state, entity)) return;
+    if (entity >= config_get_max_entities(app_state) || !entity_is_active(app_state, entity)) return;
     
     // Clear all component flags for this entity
     app_state->ecs.components.component_active[entity] = 0;
@@ -631,7 +631,7 @@ void entity_destroy(struct AppState *app_state, Entity entity) {
 
 bool entity_exists(struct AppState *app_state, Entity entity) {
     if (!app_state) return false;
-    return entity < config_get_max_entities() && entity_is_active(app_state, entity);
+    return entity < config_get_max_entities(app_state) && entity_is_active(app_state, entity);
 }
 
 void *entity_get_component(struct AppState *app_state, Entity entity, uint32_t component_id) {
@@ -669,7 +669,7 @@ uint32_t component_register(struct AppState *app_state, const char *name, size_t
     app_state->ecs.components.component_info[index].data_size = size;
     
     // Add to hash table for fast lookup
-    component_hash_table_add(&app_state->ecs.components.name_lookup, name, index);
+    component_hash_table_add(&app_state->ecs.components.name_lookup, name, index, app_state);
     
     LOG_INFO("Registered component: %s (ID: %d, Size: %zu)", name, index, size);
     
@@ -695,8 +695,8 @@ bool component_add(struct AppState *app_state, Entity entity, uint32_t component
     
     VALIDATE_NOT_NULL_FALSE(data, "component data");
     
-    if (entity >= config_get_max_entities()) {
-        ERROR_RETURN_FALSE(RESULT_ERROR_OUT_OF_BOUNDS, "Entity ID %u exceeds maximum %u", entity, config_get_max_entities());
+    if (entity >= config_get_max_entities(app_state)) {
+        ERROR_RETURN_FALSE(RESULT_ERROR_OUT_OF_BOUNDS, "Entity ID %u exceeds maximum %u", entity, config_get_max_entities(app_state));
     }
     
     if (!entity_is_active(app_state, entity)) {
@@ -708,7 +708,7 @@ bool component_add(struct AppState *app_state, Entity entity, uint32_t component
     }
     
     // Add component using sparse storage
-    if (!sparse_array_add(&app_state->ecs.components.component_arrays[component_id], entity, data)) {
+    if (!sparse_array_add(&app_state->ecs.components.component_arrays[component_id], entity, data, app_state)) {
         ERROR_RETURN_FALSE(RESULT_ERROR_OUT_OF_MEMORY, "Failed to add component %u to entity %u", component_id, entity);
     }
     
@@ -727,7 +727,7 @@ bool component_remove(struct AppState *app_state, Entity entity, uint32_t compon
     // Check if component is active
     if (app_state->ecs.components.component_active[entity] & app_state->ecs.components.component_info[component_id].bit_flag) {
         // Remove component using sparse storage
-        sparse_array_remove(&app_state->ecs.components.component_arrays[component_id], entity);
+        sparse_array_remove(&app_state->ecs.components.component_arrays[component_id], entity, app_state);
         
         // Clear component flag
         app_state->ecs.components.component_active[entity] &= ~app_state->ecs.components.component_info[component_id].bit_flag;

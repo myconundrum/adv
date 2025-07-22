@@ -7,44 +7,21 @@
 #include <SDL2/SDL_ttf.h>
 #include <stdio.h>
 
-static TTF_Font *g_status_font = NULL;
-
 void statusview_init(void) {
-    // Try to load a font for the status line (same as render system)
-    const char* font_paths[] = {
-        "/System/Library/Fonts/Monaco.ttf",
-        "/System/Library/Fonts/Courier.ttc",
-        "/System/Library/Fonts/Menlo.ttc",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
-        "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
-        NULL
-    };
-    
-    g_status_font = NULL;
-    for (int i = 0; font_paths[i] != NULL; i++) {
-        g_status_font = TTF_OpenFont(font_paths[i], 14);
-        if (g_status_font) {
-            break;
-        }
-    }
-    
-    if (!g_status_font) {
-        LOG_WARN("Could not load font for status line");
-    }
+    // Font is now managed by the render system
+    LOG_INFO("Status view initialized");
 }
 
 void statusview_cleanup(void) {
-    if (g_status_font) {
-        TTF_CloseFont(g_status_font);
-        g_status_font = NULL;
-    }
+    // Font is now managed by the render system
+    LOG_INFO("Status view cleaned up");
 }
 
 // Helper function to render text at a specific position
-static void render_text_at_position(SDL_Renderer *renderer, const char *text, int x, int y, SDL_Color color) {
-    if (!g_status_font || !text) return;
+static void render_text_at_position(SDL_Renderer *renderer, TTF_Font *font, const char *text, int x, int y, SDL_Color color) {
+    if (!font || !text) return;
     
-    SDL_Surface *text_surface = TTF_RenderText_Solid(g_status_font, text, color);
+    SDL_Surface *text_surface = TTF_RenderText_Solid(font, text, color);
     if (text_surface) {
         SDL_Texture *text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
         if (text_texture) {
@@ -78,7 +55,11 @@ void statusview_render(SDL_Renderer *renderer, AppState *app_state) {
     SDL_Rect border_rect = {0, status_y, status_width, 1};
     SDL_RenderFillRect(renderer, &border_rect);
     
-    if (!g_status_font) return;
+    TTF_Font *font = render_system_get_small_font(app_state);
+    if (!font) {
+        LOG_WARN("Could not get font for status line");
+        return;
+    }
     
     // Get player components
     Position *player_pos = (Position *)entity_get_component(app_state, app_state->player, component_get_id(app_state, "Position"));
@@ -99,5 +80,5 @@ void statusview_render(SDL_Renderer *renderer, AppState *app_state) {
         snprintf(status_line, sizeof(status_line), 
                 "Dungeon Level: 1  |  Rooms: %d", app_state->dungeon.room_count);
     }
-    render_text_at_position(renderer, status_line, x_offset, y_offset, white);
+    render_text_at_position(renderer, font, status_line, x_offset, y_offset, white);
 } 

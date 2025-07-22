@@ -1,17 +1,16 @@
 #include "main_menu.h"
 #include "log.h"
 #include "render_system.h"
+#include "appstate.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <string.h>
 
-static TTF_Font *g_menu_font = NULL;
-
 // Helper function to render text at a specific position
-static void render_text_at_position(SDL_Renderer *renderer, const char *text, int x, int y, SDL_Color color) {
-    if (!g_menu_font || !text) return;
+static void render_text_at_position(SDL_Renderer *renderer, TTF_Font *font, const char *text, int x, int y, SDL_Color color) {
+    if (!font || !text) return;
     
-    SDL_Surface *text_surface = TTF_RenderText_Solid(g_menu_font, text, color);
+    SDL_Surface *text_surface = TTF_RenderText_Solid(font, text, color);
     if (text_surface) {
         SDL_Texture *text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
         if (text_texture) {
@@ -35,37 +34,15 @@ void main_menu_init(MainMenu *menu) {
     menu->selected_option = MENU_OPTION_NEW_GAME;
     menu->option_selected = false;
     
-    // Load font if not already loaded
-    if (!g_menu_font) {
-        const char* font_paths[] = {
-            "/System/Library/Fonts/Monaco.ttf",
-            "/System/Library/Fonts/Courier.ttc",
-            "/System/Library/Fonts/Menlo.ttc",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
-            NULL
-        };
-        
-        for (int i = 0; font_paths[i] != NULL; i++) {
-            g_menu_font = TTF_OpenFont(font_paths[i], 18);
-            if (g_menu_font) {
-                break;
-            }
-        }
-        
-        if (!g_menu_font) {
-            LOG_WARN("Could not load font for main menu");
-        }
-    }
+    LOG_INFO("Main menu initialized");
 }
 
+// Main menu cleanup
 void main_menu_cleanup(MainMenu *menu) {
-    (void)menu;
+    if (!menu) return;
     
-    if (g_menu_font) {
-        TTF_CloseFont(g_menu_font);
-        g_menu_font = NULL;
-    }
+    memset(menu, 0, sizeof(MainMenu));
+    LOG_INFO("Main menu cleaned up");
 }
 
 // Input handling for main menu
@@ -106,6 +83,8 @@ void main_menu_handle_input(MainMenu *menu, int key) {
 
 // Main menu rendering
 void main_menu_render(MainMenu *menu, SDL_Renderer *renderer) {
+    AppState *app_state = appstate_get();
+    TTF_Font *large_font = render_system_get_large_font(app_state);
     if (!menu || !renderer) return;
     
     // Clear screen with dark blue background
@@ -123,8 +102,8 @@ void main_menu_render(MainMenu *menu, SDL_Renderer *renderer) {
     
     // Title
     int title_y = screen_height / 4;
-    render_text_at_position(renderer, "ADVENTURE GAME", screen_width / 2 - 100, title_y, white);
-    render_text_at_position(renderer, "Basic Fantasy RPG", screen_width / 2 - 80, title_y + 30, gray);
+    render_text_at_position(renderer, large_font, "ADVENTURE GAME", screen_width / 2 - 100, title_y, white);
+    render_text_at_position(renderer, large_font, "Basic Fantasy RPG", screen_width / 2 - 80, title_y + 30, gray);
     
     // Menu options
     const char* menu_texts[] = {
@@ -142,15 +121,15 @@ void main_menu_render(MainMenu *menu, SDL_Renderer *renderer) {
         
         // Add selection indicator
         if (i == (int)menu->selected_option) {
-            render_text_at_position(renderer, ">", screen_width / 2 - 120, y_pos, yellow);
+            render_text_at_position(renderer, large_font, ">", screen_width / 2 - 120, y_pos, yellow);
         }
         
-        render_text_at_position(renderer, menu_texts[i], screen_width / 2 - 100, y_pos, color);
+        render_text_at_position(renderer, large_font, menu_texts[i], screen_width / 2 - 100, y_pos, color);
     }
     
-    // Instructions
-    render_text_at_position(renderer, "Use arrow keys to navigate, Enter to select", 
-                           screen_width / 2 - 200, screen_height - 100, gray);
+        // Instructions
+    render_text_at_position(renderer, large_font, "Use arrow keys to navigate, Enter to select", 
+                            screen_width / 2 - 200, screen_height - 100, gray);
     
     SDL_RenderPresent(renderer);
 }

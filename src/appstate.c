@@ -47,7 +47,9 @@ bool appstate_init(void) {
     // Initialize render state
     g_appstate->render.window = NULL;
     g_appstate->render.renderer = NULL;
-    g_appstate->render.font = NULL;
+    g_appstate->render.font_small = NULL;
+    g_appstate->render.font_medium = NULL;
+    g_appstate->render.font_large = NULL;
     g_appstate->render.initialized = false;
     g_appstate->render.z_buffer_0 = NULL;
     g_appstate->render.z_buffer_1 = NULL;
