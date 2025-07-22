@@ -60,7 +60,7 @@ static int init_game_systems(void) {
     AppState *as = appstate_get();
     if (!as) {
         LOG_ERROR("AppState not initialized");
-        return 0;
+        return false;
     }
     
     // Initialize ECS
@@ -69,7 +69,7 @@ static int init_game_systems(void) {
     // Initialize render system (includes SDL initialization) but don't register yet
     if (!render_system_init()) {
         LOG_ERROR("Failed to initialize render system");
-        return 0;
+        return false;
     }
 
     // Initialize view systems
@@ -94,25 +94,21 @@ static int init_game_systems(void) {
     // Initialize template system
     if (template_system_init() != 0) {
         LOG_ERROR("Failed to initialize template system");
-        return 0;
+        return false;
     }
     
     // Load templates from file
     if (load_templates_from_file("data.json") != 0) {
         LOG_ERROR("Failed to load templates");
-        return 0;
+        return false;
     }
     
-    return 1;
+    return true;
 }
 
+bool init_all(void) {
 
-
-
-int main(int argc, char* argv[]) {
-    (void)argc;  // Suppress unused parameter warning
-    (void)argv;  // Suppress unused parameter warning
-    
+ 
     // Initialize logging system
     LogConfig log_config = {
         .min_level = LOG_LEVEL_INFO,
@@ -127,7 +123,7 @@ int main(int argc, char* argv[]) {
     // Initialize configuration system
     if (!config_init()) {
         LOG_FATAL("Failed to initialize configuration system");
-        return 1;
+        return false;
     }
     
     // Load configuration from file
@@ -145,7 +141,7 @@ int main(int argc, char* argv[]) {
         
         if (!mempool_init()) {
             LOG_FATAL("Failed to initialize memory pool");
-            return 1;
+            return false;
         }
         LOG_INFO("Memory pool system initialized");
     } else {
@@ -155,19 +151,32 @@ int main(int argc, char* argv[]) {
     // Initialize appstate singleton
     if (!appstate_init()) {
         LOG_FATAL("Failed to initialize AppState");
-        return 1;
+        return false;
     }
     
     // Initialize game systems
     if (!init_game_systems()) {
         LOG_FATAL("Failed to initialize game systems");
         cleanup_resources();
-        return 1;
+        return false;
     }
     
     AppState *as = appstate_get();
     as->initialized = true;
     LOG_INFO("Game initialized successfully");
+
+    return true;
+}
+
+
+int main(int argc, char* argv[]) {
+    (void)argc;  // Suppress unused parameter warning
+    (void)argv;  // Suppress unused parameter warning
+   
+    if (!init_all()) {
+        LOG_FATAL("Failed to initialize all systems");
+        return 1;
+    }
     
     // Create and initialize state manager
     GameStateManager *state_manager = game_state_manager_create();
